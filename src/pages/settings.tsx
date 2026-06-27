@@ -226,6 +226,7 @@ export function Settings() {
                   </span>
                 </div>
                 <button 
+                  id="toggle-api-gateway"
                   onClick={() => updateSettings({ 
                     gatewayMode: settings.gatewayMode === "simulation" ? "live" : "simulation" 
                   })}
@@ -244,6 +245,7 @@ export function Settings() {
                   </span>
                 </div>
                 <button 
+                  id="toggle-strict-mlr"
                   onClick={() => updateSettings({ maintenanceMode: !settings.maintenanceMode })}
                   className="text-blue-600 hover:text-blue-700 transition-colors cursor-pointer shrink-0"
                 >
@@ -260,6 +262,7 @@ export function Settings() {
                   </span>
                 </div>
                 <button 
+                  id="toggle-deep-audit"
                   onClick={() => updateSettings({ auditLogging: !settings.auditLogging })}
                   className="text-blue-600 hover:text-blue-700 transition-colors cursor-pointer shrink-0"
                 >
