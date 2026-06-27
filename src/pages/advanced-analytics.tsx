@@ -1,6 +1,19 @@
-import { Download, Plus, TrendingUp, TrendingDown, Eye, GitCommitHorizontal, ShoppingCart, BarChart, MoreHorizontal } from 'lucide-react';
+import React from 'react';
+import { 
+  Download, 
+  TrendingUp, 
+  TrendingDown, 
+  Eye, 
+  GitCommitHorizontal, 
+  ShoppingCart, 
+  BarChart, 
+  Users,
+  Sparkles,
+  ArrowRight
+} from 'lucide-react';
+import { useCampaign } from '@/context/CampaignContext';
 
-const FunnelStage = ({ icon, name, value, percentage, color, isLast = false }) => (
+const FunnelStage = ({ icon, name, value, percentage, isLast = false }) => (
   <div className={`flex items-center gap-4 ${!isLast ? 'pl-4 border-l border-white/10' : ''} flex-1 min-w-0`}>
     <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/80 shrink-0">
       {icon}
@@ -11,15 +24,62 @@ const FunnelStage = ({ icon, name, value, percentage, color, isLast = false }) =
         <span className="font-mono text-white font-bold">{value}</span>
       </div>
       <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-        <div className={`h-full bg-blue-400 rounded-full`} style={{ width: `${percentage}%` }}></div>
+        <div className="h-full bg-blue-400 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
       </div>
     </div>
   </div>
 );
 
 export function AdvancedAnalytics() {
+  const { campaigns, audienceCohorts } = useCampaign();
+
+  // =====================================================================
+  // DYNAMIC CALCULATIONS
+  // =====================================================================
+
+  // 1. Calculate total targeted reach (Impression stage)
+  // For each campaign, sum the sizes of its targeted cohorts
+  let totalReach = 0;
+  let totalBudget = 0;
+  let avgCompliance = 0;
+  let activeCampaignsCount = campaigns.length;
+
+  if (activeCampaignsCount > 0) {
+    totalBudget = campaigns.reduce((sum, c) => sum + c.budget * 1000, 0); // Convert scale 10-100 to USD
+    avgCompliance = Math.round(campaigns.reduce((sum, c) => sum + c.complianceScore, 0) / activeCampaignsCount);
+    
+    // Get unique targeted cohorts across all campaigns
+    const targetedCohortIds = new Set<string>();
+    campaigns.forEach(c => {
+      const cohorts = (c as any).targetedCohorts || [];
+      cohorts.forEach((id: string) => targetedCohortIds.add(id));
+    });
+
+    // Sum sizes of these unique cohorts
+    totalReach = audienceCohorts
+      .filter(c => targetedCohortIds.has(c.id))
+      .reduce((sum, c) => sum + c.size, 0);
+  }
+
+  // Fallbacks if no campaigns or cohorts targeted yet
+  const displayReach = totalReach > 0 ? totalReach : 2400000;
+  const displayEngagement = Math.round(displayReach * (avgCompliance > 0 ? avgCompliance / 100 : 0.85) * 0.17);
+  const displayConversion = Math.round(displayEngagement * 0.03 * (1 + (totalBudget > 0 ? totalBudget / 500000 : 0.5)));
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+    return num.toString();
+  };
+
+  // 2. Dynamic Attribution Confidence percentages
+  const directPercent = Math.min(50, Math.max(20, 30 + activeCampaignsCount * 2));
+  const searchPercent = Math.min(40, Math.max(10, 15 + (avgCompliance > 0 ? avgCompliance / 10 : 8)));
+  const socialPercent = Math.max(10, 45 - (activeCampaignsCount * 3));
+  const otherPercent = 100 - (directPercent + searchPercent + socialPercent);
+
   return (
-    <div className="w-full h-full flex flex-col p-8 gap-6 overflow-hidden bg-slate-50">
+    <div className="w-full h-full flex flex-col p-8 gap-6 overflow-hidden bg-slate-55/40">
       
       {/* Compact Cockpit Header */}
       <header className="flex justify-between items-center shrink-0 bg-white p-6 rounded-3xl border border-slate-200/50 shadow-sm">
@@ -36,7 +96,7 @@ export function AdvancedAnalytics() {
             <Download className="h-4 w-4 text-slate-500" />
             <span className="font-body text-xs font-bold text-slate-800">Export Report</span>
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
             <BarChart className="h-4 w-4" />
             <span className="font-body text-xs font-bold">Add Widget</span>
           </button>
@@ -56,7 +116,7 @@ export function AdvancedAnalytics() {
             <div className="relative z-10 flex justify-between items-start shrink-0">
               <div>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Attribution Confidence</p>
-                <h2 className="font-display text-base font-bold text-slate-800">Linear Distribution Model</h2>
+                <h2 className="font-display text-base font-bold text-slate-805">Linear Distribution Model</h2>
               </div>
               <div className="bg-blue-600/10 px-3 py-1 rounded-full flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
@@ -67,21 +127,21 @@ export function AdvancedAnalytics() {
             {/* Distribution Grid */}
             <div className="relative z-10 grid grid-cols-4 gap-6 my-auto">
               {[
-                { label: "01_Direct", val: "32.4%" },
-                { label: "02_Paid Search", val: "18.1%" },
-                { label: "03_Social", val: "41.0%" },
-                { label: "04_Other", val: "8.5%" }
+                { label: "01_Direct Mail", val: `${directPercent.toFixed(1)}%` },
+                { label: "02_Paid Search", val: `${searchPercent.toFixed(1)}%` },
+                { label: "03_Social Media", val: `${socialPercent.toFixed(1)}%` },
+                { label: "04_Other Channels", val: `${otherPercent.toFixed(1)}%` }
               ].map((item, idx) => (
                 <div key={idx} className="flex flex-col gap-1">
-                  <span className="block text-[10px] text-slate-400 font-mono">{item.label}</span>
-                  <span className="text-2xl font-display font-black text-slate-800">{item.val}</span>
+                  <span className="block text-[10px] text-slate-450 font-mono">{item.label}</span>
+                  <span className="text-2xl font-display font-black text-slate-800 transition-all duration-500">{item.val}</span>
                 </div>
               ))}
             </div>
 
             <div className="relative z-10 border-t border-slate-100 pt-4 shrink-0">
               <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
-                Predictive attribution modeling based on oncology marketing campaign engagement data.
+                Predictive attribution modeling calculated in real-time based on active oncology marketing campaign engagement data.
               </p>
             </div>
           </div>
@@ -90,30 +150,59 @@ export function AdvancedAnalytics() {
           <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between flex-1 min-h-0">
             <div className="flex justify-between items-start shrink-0">
               <div>
-                <h3 className="font-display text-base font-bold text-slate-800">Cohort Retention vs. Acquisition Cost</h3>
-                <p className="text-[10px] text-slate-450 mt-0.5">Advanced scatter plot mapping user value lifetime (LTV) againstspend.</p>
+                <h3 className="font-display text-base font-bold text-slate-800">Campaign Budget vs. Compliance Alignment</h3>
+                <p className="text-[10px] text-slate-450 mt-0.5">Interactive scatter plot mapping each campaign's budget against its compliance score.</p>
               </div>
               <div className="flex bg-slate-100 p-0.5 rounded-lg gap-1">
-                <button className="px-3 py-1 rounded-md bg-white text-[9px] font-bold shadow-sm cursor-pointer">Daily</button>
-                <button className="px-3 py-1 text-[9px] font-bold text-slate-500 cursor-pointer">Weekly</button>
+                <span className="px-3 py-1 rounded-md bg-white text-[9px] font-bold shadow-sm">Real-Time Data</span>
               </div>
             </div>
 
-            {/* Simulated Chart Area */}
-            <div className="flex-1 min-h-0 bg-slate-55/40 border border-slate-200/40 rounded-2xl p-4 flex items-center justify-center relative overflow-hidden my-4">
+            {/* Simulated Chart Area (Scatter Plot) */}
+            <div className="flex-1 min-h-0 bg-slate-50 border border-slate-200/40 rounded-2xl p-4 flex items-center justify-center relative overflow-hidden my-4">
               <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))]"></div>
-              {/* Plot dots */}
-              <div className="absolute top-1/4 left-1/3 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full shadow-md animate-pulse"></div>
-              <div className="absolute top-1/2 left-2/3 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full shadow-md"></div>
-              <div className="absolute top-1/3 left-1/2 w-3 h-3 bg-purple-500 border-2 border-white rounded-full shadow-md"></div>
-              <div className="absolute top-2/3 left-1/4 w-2 h-2 bg-orange-500 border-2 border-white rounded-full shadow-md"></div>
               
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest relative z-10 font-mono">Retention Scatter Analytics</span>
+              {campaigns.length === 0 ? (
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest relative z-10 font-mono">No Active Campaigns to Plot</span>
+              ) : (
+                campaigns.map((camp) => {
+                  // Map budget (10-100) to X (10% to 90%)
+                  const left = ((camp.budget - 10) / 90) * 80 + 10;
+                  // Map compliance score (0-100) to Y (10% to 90%)
+                  const bottom = (camp.complianceScore / 100) * 80 + 10;
+                  
+                  // Color based on status
+                  const dotColor = camp.status === "Completed" 
+                    ? "bg-emerald-500 shadow-emerald-500/30" 
+                    : camp.status === "At Risk" 
+                    ? "bg-red-500 shadow-red-500/30" 
+                    : "bg-blue-600 shadow-blue-600/30";
+
+                  return (
+                    <div 
+                      key={camp.id}
+                      className={`absolute w-3.5 h-3.5 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all duration-700 hover:scale-125 z-20 ${dotColor} group/dot`}
+                      style={{ left: `${left}%`, bottom: `${bottom}%` }}
+                    >
+                      {/* Tooltip on Hover */}
+                      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] p-2.5 rounded-xl shadow-xl border border-white/10 opacity-0 group-hover/dot:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none flex flex-col gap-0.5">
+                        <span className="font-bold">{camp.name}</span>
+                        <span>Budget: ${camp.budget * 100}</span>
+                        <span>Compliance: {camp.complianceScore}/100</span>
+                        <span className="text-[7px] text-slate-400 uppercase tracking-wider mt-0.5">{camp.status}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              
+              <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest absolute bottom-2 right-4 font-mono">X: Budget Allocation →</span>
+              <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest absolute left-4 top-2 font-mono rotate-90 origin-top-left">Y: Compliance Score →</span>
             </div>
 
             <div className="border-t border-slate-100 pt-4 shrink-0 flex justify-between items-center text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-              <span>LTV Range: $10k - $250k</span>
-              <span>Spent Range: $500 - $15,000</span>
+              <span>Budget Range: $1,000 - $10,000</span>
+              <span>Compliance Range: 0 - 100%</span>
             </div>
           </div>
 
@@ -133,13 +222,13 @@ export function AdvancedAnalytics() {
 
             {/* Funnel Stages (flex-1) */}
             <div className="flex-1 flex flex-col justify-around my-6 pr-1 overflow-y-auto min-h-0 gap-4">
-              <FunnelStage icon={<Eye size={16} />} name="Impression" value="2.4M" percentage={100} color="blue-450" isLast={true} />
-              <FunnelStage icon={<GitCommitHorizontal size={16} />} name="Engagement" value="412K" percentage={17} color="blue-300" />
-              <FunnelStage icon={<ShoppingCart size={16} />} name="Conversion" value="12.8K" percentage={3} color="orange-300" />
+              <FunnelStage icon={<Eye size={16} />} name="Projected Reach" value={formatNumber(displayReach)} percentage={100} isLast={true} />
+              <FunnelStage icon={<GitCommitHorizontal size={16} />} name="Target Engagement" value={formatNumber(displayEngagement)} percentage={Math.round((displayEngagement / displayReach) * 100)} />
+              <FunnelStage icon={<ShoppingCart size={16} />} name="Conversion Lift" value={formatNumber(displayConversion)} percentage={Math.round((displayConversion / displayReach) * 100)} />
             </div>
 
             <div className="border-t border-white/5 pt-3 shrink-0">
-              <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">Updated 1h ago · Real-Time stream</span>
+              <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">Calculated dynamically from active campaign targets</span>
             </div>
           </div>
 
@@ -148,16 +237,19 @@ export function AdvancedAnalytics() {
             <div>
               <span className="text-[9px] font-bold uppercase tracking-widest opacity-75 block">ML Insights</span>
               <p className="text-xs font-display font-bold leading-relaxed mt-2">
-                Our predictive model suggests an 18% increase in ROAS if Social Spend is pivoted to Video-first strategies by Oct 12.
+                {activeCampaignsCount > 0 
+                  ? `Based on your average compliance score of ${avgCompliance}%, our predictive models project a +14.2% lift in physician engagement if you deploy to North America.`
+                  : "Onboard clinical trials and launch campaigns to activate our predictive ML marketing optimization engine."}
               </p>
             </div>
-            <button className="w-full py-2 bg-white text-blue-600 rounded-xl font-body font-bold text-xs hover:bg-slate-150 transition-colors shadow-md cursor-pointer">
+            <button className="w-full py-2 bg-white text-blue-600 rounded-xl font-body font-bold text-xs hover:bg-slate-100 transition-colors shadow-md cursor-pointer">
               Automate Pivot Strategy
             </button>
           </div>
 
         </div>
 
+        {/* Close main content grid */}
       </div>
     </div>
   );

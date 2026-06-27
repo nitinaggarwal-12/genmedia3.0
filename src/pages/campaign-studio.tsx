@@ -20,7 +20,19 @@ import {
 
 export function CampaignStudio() {
   const navigate = useNavigate();
-  const { campaigns, activeCampaignId, activeCampaign, updateCampaign, addCampaign, selectCampaign, addNotification } = useCampaign();
+  const { 
+    campaigns, 
+    activeCampaignId, 
+    activeCampaign, 
+    updateCampaign, 
+    addCampaign, 
+    selectCampaign, 
+    addNotification, 
+    clinicalTrials, 
+    audienceCohorts,
+    settings,
+    addAuditLog
+  } = useCampaign();
   
   const [activeStep, setActiveStep] = useState(1); // Default to Step 01 (Identity & Clinical Grounding)
   const [budget, setBudget] = useState(45); // Scale of 10-100 (defaults to 45, which is $4,500)
@@ -51,6 +63,7 @@ export function CampaignStudio() {
   const [groundingCoords, setGroundingCoords] = useState<any[]>([]);
   const [activeMetric, setActiveMetric] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
+  const [selectedCohorts, setSelectedCohorts] = useState<string[]>([]);
 
   // Sync local states from active campaign when it changes
   useEffect(() => {
@@ -63,6 +76,11 @@ export function CampaignStudio() {
       if (activeCampaign.activeViolations !== undefined) setActiveViolations(activeCampaign.activeViolations);
       if (activeCampaign.complianceScore !== undefined) setComplianceScore(activeCampaign.complianceScore);
       if (activeCampaign.regulatoryReasoning !== undefined) setRegulatoryReasoning(activeCampaign.regulatoryReasoning);
+      if ((activeCampaign as any).targetedCohorts !== undefined) {
+        setSelectedCohorts((activeCampaign as any).targetedCohorts || []);
+      } else {
+        setSelectedCohorts([]);
+      }
       if (activeCampaign.assets !== undefined) {
         setAssets(activeCampaign.assets);
         if (activeCampaign.assets.length > 0) {
@@ -117,6 +135,31 @@ export function CampaignStudio() {
       }
     }
   }, [activeMetric, groundingCoords]);
+
+  const handleSelectPreIngestedTrial = (trialId: string) => {
+    const trial = clinicalTrials.find(t => t.id === trialId);
+    if (!trial) return;
+    
+    setUploadedPdfName(trial.pdfName);
+    setClinicalMetrics(trial.metrics);
+    // Create mock coordinates for the viewer
+    const mockCoords = [
+      { metric: "hazard_ratio", page: 4 },
+      { metric: "rfs_rate", page: 4 },
+      { metric: "p_value", page: 4 }
+    ];
+    setGroundingCoords(mockCoords);
+    setActiveMetric("hazard_ratio");
+
+    if (activeCampaignId) {
+      updateCampaign(activeCampaignId, {
+        pdfName: trial.pdfName,
+        metrics: trial.metrics,
+        step: 1,
+        status: "Creative"
+      });
+    }
+  };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -395,15 +438,28 @@ export function CampaignStudio() {
         if (nextStep === 5) nextStatus = "Legal Review";
         updateCampaign(activeCampaignId, {
           step: nextStep,
-          status: nextStatus as any
+          status: nextStatus as any,
+          budget: budget,
+          targetedCohorts: selectedCohorts as any
         });
       }
     } else {
       // Final submission (Approve to Memory)
+      if (settings.maintenanceMode && complianceScore < 90) {
+        addNotification(
+          "Security Policy Block",
+          `Submission rejected: Campaign compliance score (${complianceScore}/100) is below the Strict MLR Gatekeeping threshold (90/100).`,
+          "warning"
+        );
+        addAuditLog(`Submission of '${activeCampaign?.name}' BLOCKED by Strict MLR Gatekeeper (Score: ${complianceScore}/100).`, "WARN");
+        return;
+      }
       if (activeCampaignId) {
         updateCampaign(activeCampaignId, {
           status: "Completed",
-          step: 5
+          step: 5,
+          budget: budget,
+          targetedCohorts: selectedCohorts as any
         });
         addNotification(
           "Campaign Transmitted",
@@ -572,9 +628,39 @@ export function CampaignStudio() {
                     <UploadCloud size={16} className="text-blue-600" /> Clinical Source Ingestion
                   </h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                    Upload clinical trial PDF to extract grounded claims
+                    Select a study from the RAG library or upload a new PDF
                   </p>
                 </div>
+
+                {/* Pre-Ingested Study Selector */}
+                {!uploadedPdfName && (
+                  <div className="space-y-1.5 shrink-0">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Select Study from RAG Library
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleSelectPreIngestedTrial(e.target.value);
+                        }
+                      }}
+                      defaultValue=""
+                      className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-705 cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select trial --</option>
+                      {clinicalTrials.map(trial => (
+                        <option key={trial.id} value={trial.id}>
+                          {trial.name} ({trial.pdfName})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2 py-1">
+                      <div className="h-px bg-slate-200 flex-1"></div>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Or Upload New</span>
+                      <div className="h-px bg-slate-200 flex-1"></div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Drag & Drop Zone */}
                 {!uploadedPdfName ? (
@@ -800,34 +886,88 @@ export function CampaignStudio() {
            VIEW 0.5: STEP 02 - AUDIENCE SEGMENTATION
            ========================================== */}
         {activeStep === 2 && (
-          <div className="col-span-12 bg-white rounded-3xl border border-slate-200/60 p-10 shadow-sm max-w-4xl mx-auto space-y-8">
-            <div className="border-b border-slate-100 pb-6 text-center space-y-2">
-              <h3 className="font-display text-2xl font-bold text-slate-800">Audience Segmentation & Targeting</h3>
-              <p className="text-xs text-slate-400">Define physician targets, patient cohorts, and regional allocations for the campaign.</p>
+          <div className="col-span-12 bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm max-w-5xl mx-auto space-y-6 h-full flex flex-col min-h-0">
+            <div className="border-b border-slate-100 pb-4 text-center shrink-0">
+              <h3 className="font-display text-xl font-bold text-slate-800">Audience Segmentation & Targeting</h3>
+              <p className="text-xs text-slate-400 mt-1">Select which physician and patient cohorts to target for this clinical campaign.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Patients</span>
-                <h4 className="font-display text-base font-bold text-slate-800">Post-Nephrectomy RCC</h4>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  High-risk patients with resectable renal cell carcinoma undergoing adjuvant therapy.
-                </p>
+            {/* Scrollable Cohort Grid */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 pb-4">
+              <div className="grid grid-cols-12 gap-6">
+                {audienceCohorts.map((cohort) => {
+                  const isSelected = selectedCohorts.includes(cohort.id);
+                  return (
+                    <div 
+                      key={cohort.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedCohorts(selectedCohorts.filter(id => id !== cohort.id));
+                        } else {
+                          setSelectedCohorts([...selectedCohorts, cohort.id]);
+                        }
+                      }}
+                      className={`col-span-12 md:col-span-6 lg:col-span-4 p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-4 relative group ${
+                        isSelected 
+                          ? "bg-blue-50/40 border-blue-500/40 shadow-md shadow-blue-500/5" 
+                          : "bg-slate-50/30 border-slate-200/50 hover:bg-slate-50/60"
+                      }`}
+                    >
+                      {/* Selection Checkbox indicator */}
+                      <div className={`absolute top-4 right-4 w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "border-slate-300 bg-white"
+                      }`}>
+                        {isSelected && <span className="text-[9px] font-bold">✓</span>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                          cohort.region === "North America" 
+                            ? "bg-amber-100 text-amber-700" 
+                            : cohort.region === "Europe" 
+                            ? "bg-purple-100 text-purple-700" 
+                            : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {cohort.region}
+                        </span>
+                        <h4 className="font-display text-sm font-bold text-slate-800 mt-1">{cohort.name}</h4>
+                        <p className="text-[10px] text-slate-500">
+                          Audience size: <strong className="text-slate-700">{cohort.size.toLocaleString()}</strong> patients.
+                        </p>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-slate-200/40 pt-3 mt-1">
+                        <span className="text-[9px] text-slate-450 font-medium">Engagement Potential:</span>
+                        <span className={`font-mono text-xs font-bold ${
+                          cohort.engagement >= 80 ? "text-emerald-600" : "text-amber-600"
+                        }`}>{cohort.engagement}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Physician Segments</span>
-                <h4 className="font-display text-base font-bold text-slate-800">Oncologists & Urologists</h4>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Key decision makers managing adjuvant treatment sequencing and clinical trials.
-                </p>
+            </div>
+
+            {/* Live Calculation Footer (shrink-0) */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/40 flex justify-between items-center shrink-0">
+              <div className="flex gap-8">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Selected Cohorts</span>
+                  <p className="text-base font-display font-bold text-slate-800">{selectedCohorts.length}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Projected Reach</span>
+                  <p className="text-base font-display font-bold text-blue-600">
+                    {audienceCohorts
+                      .filter(c => selectedCohorts.includes(c.id))
+                      .reduce((sum, c) => sum + c.size, 0)
+                      .toLocaleString()} Patients
+                  </p>
+                </div>
               </div>
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Regional Scope</span>
-                <h4 className="font-display text-base font-bold text-slate-800">Global (US & EU5)</h4>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Allocated budget targeted at major medical centers and oncology networks.
-                </p>
-              </div>
+              <span className="text-[10px] text-slate-400 font-medium">Select cohorts to activate dynamic reach modeling in Step 4.</span>
             </div>
           </div>
         )}
@@ -1163,32 +1303,52 @@ export function CampaignStudio() {
               {/* Target Segments Card */}
               <div className="bg-slate-900 text-white rounded-3xl p-6 relative overflow-hidden shadow-xl h-full flex flex-col justify-between">
                 <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
-                <h3 className="font-display text-lg font-bold mb-6 relative z-10">Target Segments</h3>
                 
-                <div className="space-y-3 relative z-10">
-                  <div className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center gap-3">
-                    <GripVertical className="text-white/30" size={16} />
-                    <span className="text-xs font-bold text-white/90">High-Net-Worth Individuals</span>
-                  </div>
-                  <div className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center gap-3">
-                    <GripVertical className="text-white/30" size={16} />
-                    <span className="text-xs font-bold text-white/90">Tech Early Adopters (EU)</span>
-                  </div>
-                  <div className="p-4 bg-blue-600/90 border border-blue-500/20 rounded-xl flex items-center gap-3 shadow-lg shadow-blue-600/10">
-                    <GripVertical className="text-white/60" size={16} />
-                    <span className="text-xs font-bold text-white">Sustainability Enthusiasts</span>
+                <div className="flex flex-col flex-1 min-h-0">
+                  <h3 className="font-display text-base font-bold mb-4 relative z-10 shrink-0">Targeted Cohorts ({selectedCohorts.length})</h3>
+                  
+                  <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-3 relative z-10">
+                    {selectedCohorts.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
+                        <Users size={32} className="text-slate-700 mb-2" />
+                        <p className="font-body text-xs font-bold text-slate-400">No cohorts targeted</p>
+                        <p className="font-sans text-[10px] text-slate-500 mt-0.5">Go back to Step 2 to select target cohorts.</p>
+                      </div>
+                    ) : (
+                      audienceCohorts
+                        .filter(c => selectedCohorts.includes(c.id))
+                        .map((cohort) => (
+                          <div key={cohort.id} className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between gap-3 group hover:bg-white/10 transition-all">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <GripVertical className="text-white/30 shrink-0" size={14} />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-white/90 truncate">{cohort.name}</p>
+                                <p className="text-[9px] text-white/40 mt-0.5">{cohort.region} · {cohort.size.toLocaleString()} patients</p>
+                              </div>
+                            </div>
+                            <span className="font-mono text-[10px] font-bold text-emerald-450">{cohort.engagement}%</span>
+                          </div>
+                        ))
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="font-body text-[10px] text-white/50 uppercase tracking-wider mb-1">Estimated Reach</p>
-                      <p className="font-display text-3xl font-bold">
-                        1.2M <span className="text-xs font-sans text-white/40 font-normal">/ month</span>
-                      </p>
-                    </div>
-                    <Users className="text-blue-400 mb-1" size={32} />
+                {/* Simulated ROI summary */}
+                <div className="border-t border-white/10 pt-4 mt-4 shrink-0 space-y-3 relative z-10">
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-white/50 uppercase tracking-wider font-bold">Aggregate Reach</span>
+                    <span className="font-bold text-white">
+                      {audienceCohorts
+                        .filter(c => selectedCohorts.includes(c.id))
+                        .reduce((sum, c) => sum + c.size, 0)
+                        .toLocaleString()} Patients
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-white/50 uppercase tracking-wider font-bold">Projected ROI Lift</span>
+                    <span className="font-bold text-emerald-400">
+                      +{selectedCohorts.length > 0 ? (15.4 * (1 + budget / 100)).toFixed(1) : "0.0"}%
+                    </span>
                   </div>
                 </div>
               </div>

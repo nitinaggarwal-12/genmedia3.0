@@ -42,7 +42,24 @@ interface MappedSubmission {
 }
 
 export function RegulatoryHub() {
-  const { campaigns, updateCampaign, addNotification } = useCampaign();
+  const { campaigns, updateCampaign, addNotification, teamMembers } = useCampaign();
+  
+  // Find dynamic reviewers from team governance
+  const medicalReviewer = teamMembers?.find(t => t.role === "Medical") || { 
+    name: "Dr. Sarah Jenkins", 
+    role: "Medical Reviewer",
+    avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=150" 
+  };
+  const legalReviewer = teamMembers?.find(t => t.role === "Legal") || { 
+    name: "Robert Lee, JD", 
+    role: "Legal Counsel",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150" 
+  };
+  const regulatoryReviewer = teamMembers?.find(t => t.role === "Regulatory") || { 
+    name: "Maria Garcia", 
+    role: "Regulatory Lead",
+    avatar: "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?q=80&w=150" 
+  };
   
   // Selected submission for the Consensus Drawer
   const [selectedSub, setSelectedSub] = useState<MappedSubmission | null>(null);
@@ -466,11 +483,15 @@ export function RegulatoryHub() {
                     {/* Medical Affairs (Approved) */}
                     <div className="p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between shadow-sm shrink-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
-                          SJ
-                        </div>
+                        {medicalReviewer.avatar && medicalReviewer.avatar.startsWith("http") ? (
+                          <img src={medicalReviewer.avatar} alt={medicalReviewer.name} className="w-8 h-8 rounded-lg object-cover border border-emerald-200" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                            {medicalReviewer.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800">Sarah Jenkins, MD</span>
+                          <span className="text-xs font-bold text-slate-800">{medicalReviewer.name}</span>
                           <span className="text-[9px] text-slate-400">Medical Affairs Director</span>
                         </div>
                       </div>
@@ -486,11 +507,15 @@ export function RegulatoryHub() {
                         : "bg-emerald-50 border-emerald-100"
                     }`}>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
-                          RL
-                        </div>
+                        {legalReviewer.avatar && legalReviewer.avatar.startsWith("http") ? (
+                          <img src={legalReviewer.avatar} alt={legalReviewer.name} className="w-8 h-8 rounded-lg object-cover border border-emerald-200" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                            {legalReviewer.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800">Robert Lee, JD</span>
+                          <span className="text-xs font-bold text-slate-800">{legalReviewer.name}</span>
                           <span className="text-[9px] text-slate-400">Legal Compliance Lead</span>
                         </div>
                       </div>
@@ -512,15 +537,19 @@ export function RegulatoryHub() {
                         : "bg-amber-50/60 border-amber-100 shadow-sm"
                     }`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
-                          regVote === "Approved" 
-                            ? "bg-emerald-100 border-emerald-200 text-emerald-600" 
-                            : "bg-amber-100 border-amber-200 text-amber-600 animate-pulse"
-                        }`}>
-                          MG
-                        </div>
+                        {regulatoryReviewer.avatar && regulatoryReviewer.avatar.startsWith("http") ? (
+                          <img src={regulatoryReviewer.avatar} alt={regulatoryReviewer.name} className="w-8 h-8 rounded-lg object-cover border border-amber-200" />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
+                            regVote === "Approved" 
+                              ? "bg-emerald-100 border-emerald-200 text-emerald-600" 
+                              : "bg-amber-100 border-amber-200 text-amber-600 animate-pulse"
+                          }`}>
+                            {regulatoryReviewer.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800">Maria Garcia</span>
+                          <span className="text-xs font-bold text-slate-800">{regulatoryReviewer.name}</span>
                           <span className="text-[9px] text-slate-400">Regulatory Affairs Lead</span>
                         </div>
                       </div>
