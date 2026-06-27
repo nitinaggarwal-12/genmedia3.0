@@ -417,37 +417,47 @@ export function CampaignStudio() {
   };
 
   return (
-    <div className="w-full pb-12 bg-slate-50 min-h-screen">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-slate-50">
       
       {/* =====================================================================
-         1. CONTEXTUAL GUIDANCE HEADER
+         1. CONTEXTUAL GUIDANCE HEADER (COMPACT COCKPIT)
          ===================================================================== */}
-      <section className="relative px-10 pt-12 pb-16 flex flex-col items-start gap-4 z-10">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-blue-600/60 tracking-[0.2em] font-bold">
-            STEP 0{activeStep} / 05
-          </span>
-          <div className="h-px w-12 bg-slate-200"></div>
-          <span className="font-body text-xs font-bold text-slate-500 uppercase tracking-widest">
-            {activeStep === 3 ? "Asset Orchestration" : activeStep === 4 ? "Performance Forecast" : "Review & Approval"}
-          </span>
+      <section className="relative px-10 py-4 flex items-center justify-between gap-8 shrink-0 border-b border-slate-200/40 bg-white/20 backdrop-blur-sm z-10">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] text-blue-600 tracking-[0.2em] font-bold uppercase">
+              STEP 0{activeStep} / 05
+            </span>
+            <div className="h-px w-6 bg-slate-200"></div>
+            <span className="font-body text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              {activeStep === 1 ? "Identity & Grounding" : activeStep === 2 ? "Audience Segment" : activeStep === 3 ? "Asset Orchestration" : activeStep === 4 ? "Performance Forecast" : "Review & Approval"}
+            </span>
+          </div>
+          <h1 className="font-display text-lg font-bold text-slate-900">
+            {activeStep === 1 ? (
+              <>Ingesting Clinical Document & Grounding Claims</>
+            ) : activeStep === 2 ? (
+              <>Selecting Target Physician & Patient Cohorts</>
+            ) : activeStep === 3 ? (
+              <>Crafting the <span className="text-blue-600 italic">Global Launch</span> Narrative</>
+            ) : activeStep === 4 ? (
+              <>Simulating <span className="text-blue-600 italic">Market Impact</span> & Reach</>
+            ) : (
+              <>Finalizing the <span className="text-blue-600 italic">Brand Record</span></>
+            )}
+          </h1>
         </div>
-        <h1 className="font-display text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-slate-900 max-w-4xl">
-          {activeStep === 3 ? (
-            <>Crafting the <span className="text-blue-600 italic">Global Launch</span> Narrative.</>
+        <p className="font-sans text-[11px] text-slate-500 max-w-md hidden md:block leading-relaxed">
+          {activeStep === 1 ? (
+            "Upload oncology study PDFs. PixelRAG extracts clinical endpoints and maps glowing highlights over sources."
+          ) : activeStep === 2 ? (
+            "Define therapeutic specialties and geographic targets to align promotional content with relevant cohorts."
+          ) : activeStep === 3 ? (
+            "Sync your visual assets with regulatory frameworks in real-time. Our MLR engine audits copy as you type."
           ) : activeStep === 4 ? (
-            <>Simulating <span className="text-blue-600 italic">Market Impact</span> & Reach.</>
+            "Model budget allocations against target patient cohorts. Verify CPC targets and projected engagement lift."
           ) : (
-            <>Finalizing the <span className="text-blue-600 italic">Brand Record</span>.</>
-          )}
-        </h1>
-        <p className="font-sans text-base text-slate-500 max-w-2xl">
-          {activeStep === 3 ? (
-            "Sync your visual assets with regulatory frameworks in real-time. Our MLR engine ensures every pixel meets regional compliance standards before you hit deploy."
-          ) : activeStep === 4 ? (
-            "Model budget allocations against target patient cohorts. Verify CPC targets, conversion rates, and projected physician engagement lift."
-          ) : (
-            "Review your compliance ledger, active assets, and wargamed forecasts. Provide final signature to sync assets directly to Veeva PromoMats."
+            "Review your compliance ledger, active assets, and wargamed forecasts. Click Approve to sync directly to Veeva."
           )}
         </p>
       </section>
@@ -455,7 +465,7 @@ export function CampaignStudio() {
       {/* =====================================================================
          2. EDITORIAL STEPPER NAVIGATION (STICKY BAR)
          ===================================================================== */}
-      <nav className="sticky top-16 z-30 bg-white/85 backdrop-blur-md px-10 py-6 flex items-center gap-12 border-b border-slate-200/50 shadow-sm shadow-slate-100/50">
+      <nav className="bg-white px-10 py-3.5 flex items-center justify-between border-b border-slate-200/50 shadow-sm shrink-0">
         {steps.map((s) => (
           <div 
             key={s.num} 
@@ -497,7 +507,7 @@ export function CampaignStudio() {
       {/* =====================================================================
          3. DYNAMIC CONTENT GRID
          ===================================================================== */}
-      <div className="grid grid-cols-12 gap-8 px-10 py-10 max-w-[1600px] mx-auto">
+      <div className="grid grid-cols-12 gap-8 px-10 py-4 max-w-[1600px] mx-auto flex-1 min-h-0 w-full overflow-hidden">
         
         {/* ==========================================
            VIEW 1: STEP 03 - CREATIVE COMPLIANCE EDITOR
@@ -508,9 +518,9 @@ export function CampaignStudio() {
         {activeStep === 1 && (
           <>
             {/* LEFT PANE (45%): Campaign Identity & PDF Ingest */}
-            <div className="col-span-12 lg:col-span-5 space-y-8">
+            <div className="col-span-12 lg:col-span-5 flex flex-col gap-6 h-full min-h-0">
               {/* Campaign Identity Form */}
-              <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm space-y-4 shrink-0">
                 <div className="border-b border-slate-100 pb-4">
                   <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
                     <FileText size={16} className="text-blue-600" /> Campaign Identity
@@ -556,7 +566,7 @@ export function CampaignStudio() {
               </div>
 
               {/* Clinical PDF Ingestion Card */}
-              <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col flex-1 min-h-0 space-y-4">
                 <div className="border-b border-slate-100 pb-4">
                   <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
                     <UploadCloud size={16} className="text-blue-600" /> Clinical Source Ingestion
@@ -617,9 +627,9 @@ export function CampaignStudio() {
 
                 {/* Extracted Grounded Claims Ledger */}
                 {Object.keys(clinicalMetrics).length > 0 && (
-                  <div className="space-y-3 pt-4 border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grounded Claims Ledger</span>
-                    <div className="space-y-2">
+                  <div className="space-y-3 pt-4 border-t border-slate-100 flex-1 min-h-0 flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block shrink-0">Grounded Claims Ledger</span>
+                    <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2">
                       {Object.entries(clinicalMetrics).map(([key, val]) => (
                         <div
                           key={key}
@@ -654,8 +664,8 @@ export function CampaignStudio() {
             </div>
 
             {/* RIGHT PANE (55%): Simulated PDF Grounding Viewer */}
-            <div className="col-span-12 lg:col-span-7">
-              <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden h-[680px] flex flex-col">
+            <div className="col-span-12 lg:col-span-7 h-full">
+              <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden h-full flex flex-col">
                 {/* Viewer Header */}
                 <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
@@ -825,10 +835,10 @@ export function CampaignStudio() {
         {activeStep === 3 && (
           <>
             {/* LEFT PANE (60%): Interactive Copy Editor & Assets */}
-            <div className="col-span-12 lg:col-span-8 flex flex-col gap-8">
+            <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 h-full min-h-0">
               
               {/* Interactive Copy Editor Card */}
-              <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col flex-1 min-h-0 space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                   <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
                     <Sparkles className="text-blue-600" size={16} /> Marketing Copy Editor
@@ -846,14 +856,14 @@ export function CampaignStudio() {
                 </div>
 
                 {/* Textarea Input */}
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
                     Edit Marketing Narrative
                   </label>
                   <textarea
                     value={copyText}
                     onChange={(e) => setCopyText(e.target.value)}
-                    className="w-full h-44 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all font-sans leading-relaxed text-slate-700 resize-none"
+                    className="w-full flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all font-sans leading-relaxed text-slate-700 resize-none"
                     placeholder="Enter marketing copy..."
                   />
                 </div>
@@ -876,7 +886,7 @@ export function CampaignStudio() {
               </div>
 
               {/* Active Assets List */}
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden h-[220px] flex flex-col shrink-0">
                 <div className="px-6 py-4 bg-slate-50 flex justify-between items-center border-b border-slate-100">
                   <span className="font-body text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assets ({assets.length})</span>
                   <button 
@@ -888,7 +898,7 @@ export function CampaignStudio() {
                   </button>
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-slate-100 flex-1 overflow-y-auto min-h-0">
                   {assets.map((asset, idx) => (
                     <div 
                       key={idx} 
@@ -948,7 +958,7 @@ export function CampaignStudio() {
             </div>
 
             {/* RIGHT PANE (40%): Compliance Score, Locked Slide Preview, & Segments */}
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+            <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 h-full min-h-0">
               
               {/* Compliance Score Card */}
               <div className="p-6 bg-white rounded-3xl border border-slate-200/60 shadow-sm flex flex-col items-center justify-center text-center relative overflow-hidden">
@@ -1016,9 +1026,9 @@ export function CampaignStudio() {
                 </div>
 
                 {/* Deep AI Regulatory Reasoning */}
-                <div className="pt-4 border-t border-slate-100 space-y-1.5">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Deep AI Audit Notes</span>
-                  <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
+                <div className="pt-4 border-t border-slate-100 space-y-1.5 flex-1 min-h-0 flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block shrink-0">Deep AI Audit Notes</span>
+                  <p className="text-[10px] text-slate-500 leading-relaxed font-sans max-h-[80px] overflow-y-auto pr-1">
                     {regulatoryReasoning}
                   </p>
                 </div>
@@ -1085,7 +1095,7 @@ export function CampaignStudio() {
         {activeStep === 4 && (
           <>
             {/* LEFT PANE (80%): Budget & Forecast Simulator */}
-            <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-8">
+            <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col h-full min-h-0">
               <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
                 <h3 className="font-display text-base font-bold text-slate-800">Performance Forecast Simulator</h3>
                 <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
@@ -1112,9 +1122,9 @@ export function CampaignStudio() {
               </div>
 
               {/* Forecast Visual (Asymmetric Bars) */}
-              <div className="space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Projected Weekly Engagement Chart</span>
-                <div className="h-56 flex items-end justify-between gap-2.5 px-6 py-6 bg-slate-50 rounded-2xl border border-slate-200/30">
+              <div className="space-y-3 flex-1 min-h-0 flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block shrink-0">Projected Weekly Engagement Chart</span>
+                <div className="flex-1 min-h-0 flex items-end justify-between gap-2.5 px-6 py-4 bg-slate-50 rounded-2xl border border-slate-200/30">
                   {baseBarHeights.map((h, i) => (
                     <div 
                       key={i}
@@ -1149,9 +1159,9 @@ export function CampaignStudio() {
             </div>
 
             {/* RIGHT PANE (40%): Target Segments context */}
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+            <div className="col-span-12 lg:col-span-4 h-full">
               {/* Target Segments Card */}
-              <div className="bg-slate-900 text-white rounded-3xl p-8 relative overflow-hidden shadow-xl">
+              <div className="bg-slate-900 text-white rounded-3xl p-6 relative overflow-hidden shadow-xl h-full flex flex-col justify-between">
                 <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
                 <h3 className="font-display text-lg font-bold mb-6 relative z-10">Target Segments</h3>
                 

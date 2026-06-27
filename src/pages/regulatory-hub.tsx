@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   Filter, 
@@ -10,15 +10,17 @@ import {
   Users, 
   X, 
   Check,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Unlock,
+  Lock,
+  GripVertical
 } from "lucide-react";
+import { useCampaign } from "@/context/CampaignContext";
 
-// =====================================================================
-// REGULATORY HUB PAGE WITH INTERACTIVE CONSENSUS DRAWER
-// =====================================================================
-
-interface Submission {
+interface MappedSubmission {
   id: string;
+  campaignId: string;
   name: string;
   type: string;
   icon: any;
@@ -32,52 +34,76 @@ interface Submission {
     legal: "Approved" | "Pending";
     regulatory: "Approved" | "Pending";
   };
+  copyText: string;
+  complianceScore: number;
+  regulatoryReasoning: string;
+  activeViolations: any[];
+  assets: any[];
 }
 
 export function RegulatoryHub() {
-  // State-driven submissions list
-  const [submissions, setSubmissions] = useState<Submission[]>([
-    {
-      id: "MLR-2024-0892",
-      name: "Q4 Cardio-Vascular Clinical Summary",
-      type: "Document",
-      icon: FileText,
-      status: "At Risk",
-      statusColor: "red",
-      stage: ["done", "at_risk", "todo"],
-      cycle: "Round 3 of 5",
-      eta: "Est. 48h remaining",
-      reviewerVotes: {
-        medical: "Approved",
-        legal: "Approved",
-        regulatory: "Pending"
-      }
-    },
-    {
-      id: "MLR-2024-0914",
-      name: "Oncology Awareness Digital Campaign",
-      type: "Video",
-      icon: PlayCircle,
-      status: "Approved",
-      statusColor: "blue",
-      stage: ["done", "done", "done"],
-      cycle: "Final Audit",
-      eta: "Released to Production",
-      reviewerVotes: {
-        medical: "Approved",
-        legal: "Approved",
-        regulatory: "Approved"
-      }
-    },
-  ]);
-
+  const { campaigns, updateCampaign, addNotification } = useCampaign();
+  
   // Selected submission for the Consensus Drawer
-  const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
+  const [selectedSub, setSelectedSub] = useState<MappedSubmission | null>(null);
   
   // Local state to track the interactive vote in the drawer
   const [regVote, setRegVote] = useState<"Approved" | "Pending">("Pending");
 
-  const openReviewDrawer = (sub: Submission) => {
+  // Map campaigns to submissions list dynamically
+  const submissions: MappedSubmission[] = campaigns.map(c => {
+    const isAtRisk = c.complianceScore < 90;
+    const isApproved = c.status === "Completed";
+    
+    let status: "At Risk" | "Approved" | "Under Review" = "Under Review";
+    let statusColor: "red" | "blue" | "orange" = "orange";
+    let stage: ("done" | "at_risk" | "todo")[] = ["done", "done", "todo"];
+    
+    if (isApproved) {
+      status = "Approved";
+      statusColor = "blue";
+      stage = ["done", "done", "done"];
+    } else if (isAtRisk) {
+      status = "At Risk";
+      statusColor = "red";
+      stage = ["done", "at_risk", "todo"];
+    }
+    
+    return {
+      id: `MLR-${c.id.substring(5, 9).toUpperCase()}-${c.createdAt.toString().substring(8, 12)}`,
+      campaignId: c.id,
+      name: c.name,
+      type: c.assets.length > 0 && c.assets[0].type === "video" ? "Video" : "Document",
+      icon: c.assets.length > 0 && c.assets[0].type === "video" ? PlayCircle : FileText,
+      status,
+      statusColor,
+      stage,
+      cycle: isApproved ? "Final Audit" : isAtRisk ? "Round 1 of 3" : "Round 2 of 3",
+      eta: isApproved ? "Released to Production" : isAtRisk ? "Revisions Required" : "Est. 12h remaining",
+      reviewerVotes: {
+        medical: "Approved" as const,
+        legal: (isAtRisk ? "Pending" : "Approved") as const,
+        regulatory: (isApproved ? "Approved" : "Pending") as const
+      },
+      copyText: c.copyText,
+      complianceScore: c.complianceScore,
+      regulatoryReasoning: c.regulatoryReasoning,
+      activeViolations: c.activeViolations,
+      assets: c.assets
+    };
+  });
+
+  // Sync drawer vote state if the selected submission changes (e.g. updated from context)
+  useEffect(() => {
+    if (selectedSub) {
+      const current = submissions.find(s => s.campaignId === selectedSub.campaignId);
+      if (current) {
+        setRegVote(current.reviewerVotes.regulatory);
+      }
+    }
+  }, [campaigns, selectedSub?.campaignId]);
+
+  const openReviewDrawer = (sub: MappedSubmission) => {
     setSelectedSub(sub);
     setRegVote(sub.reviewerVotes.regulatory);
   };
@@ -86,32 +112,24 @@ export function RegulatoryHub() {
     setSelectedSub(null);
   };
 
-  // Simulate Regulatory Lead casting their vote
   const handleCastRegulatoryVote = () => {
     setRegVote("Approved");
   };
 
-  // Finalize MLR Approval (promotes the asset to Approved in the main table)
+  // Finalize MLR Approval (updates campaign status to Completed in the global context)
   const handleFinalApproval = () => {
     if (!selectedSub) return;
     
-    setSubmissions(prev => prev.map(sub => {
-      if (sub.id === selectedSub.id) {
-        return {
-          ...sub,
-          status: "Approved",
-          statusColor: "blue",
-          stage: ["done", "done", "done"],
-          cycle: "Final Audit",
-          eta: "Released to Production",
-          reviewerVotes: {
-            ...sub.reviewerVotes,
-            regulatory: "Approved"
-          }
-        };
-      }
-      return sub;
-    }));
+    updateCampaign(selectedSub.campaignId, {
+      status: "Completed",
+      step: 5
+    });
+
+    addNotification(
+      "MLR Approval Granted",
+      `Campaign '${selectedSub.name}' has received final MLR sign-off and is released to production.`,
+      "success"
+    );
 
     closeReviewDrawer();
   };
@@ -134,7 +152,11 @@ export function RegulatoryHub() {
 
   // Calculate consensus progress
   const getConsensusCount = () => {
+    if (!selectedSub) return 2;
     let count = 2; // Medical and Legal are pre-approved in our mock
+    if (selectedSub.status === "At Risk") {
+      count = 1; // Legal blocks if at risk!
+    }
     if (regVote === "Approved") count += 1;
     return count;
   };
@@ -144,103 +166,108 @@ export function RegulatoryHub() {
   const allApproved = consensusCount === 3;
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-slate-50 relative overflow-hidden">
+    <div className="w-full h-full flex flex-col p-8 gap-6 overflow-hidden bg-slate-50 relative">
       
-      {/* =====================================================================
-         1. HERO HEADER BANNER
-         ===================================================================== */}
-      <section className="relative px-10 pt-12 pb-24 overflow-hidden bg-white border-b border-slate-200/50">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
-          <div className="max-w-2xl">
-            <span className="font-mono text-xs text-blue-600 tracking-[0.2em] uppercase font-bold mb-4 block">
-              Regulatory Intelligence Hub
-            </span>
-            <h1 className="font-display text-5xl lg:text-6xl leading-[1.1] text-slate-900 tracking-tight mb-6">
-              MLR Workflow<br/>
-              <span className="text-blue-600 font-light italic">Compliance Engine</span>
-            </h1>
-            <p className="font-sans text-base text-slate-500 max-w-md">
-              Real-time oversight of asset lifecycle through Medical, Legal, and Regulatory gateways. High-trust auditing for global pharmaceutical standards.
-            </p>
-          </div>
-          
-          {/* Stats Indicators */}
-          <div className="flex gap-4">
-            <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col min-w-[180px] shadow-sm">
-              <span className="font-body text-xs text-slate-400 uppercase tracking-wider">Active Assets</span>
-              <span className="font-display text-4xl font-bold text-slate-800 mt-2">142</span>
+      {/* Compact Cockpit Header */}
+      <header className="flex justify-between items-center shrink-0 bg-white p-6 rounded-3xl border border-slate-200/50 shadow-sm">
+        <div>
+          <span className="px-2.5 py-0.5 bg-blue-600/10 rounded-full text-blue-600 font-body text-[9px] uppercase tracking-widest font-bold">
+            Regulatory Intelligence Hub
+          </span>
+          <h1 className="font-display text-2xl font-bold text-slate-900 mt-1.5">
+            MLR Compliance Engine
+          </h1>
+        </div>
+        <div className="flex gap-4">
+          <div className="bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200/30 flex items-center gap-3">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <Activity size={16} />
             </div>
-            <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col min-w-[180px] shadow-sm">
-              <span className="font-body text-xs text-red-500/80 uppercase tracking-wider">At Risk</span>
-              <span className="font-display text-4xl font-bold text-red-500 mt-2">01</span>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Active Reviews</span>
+              <span className="text-sm font-bold text-slate-800">
+                {submissions.filter(s => s.status !== "Approved").length}
+              </span>
+            </div>
+          </div>
+          <div className="bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200/30 flex items-center gap-3">
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg">
+              <AlertTriangle size={16} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">At Risk</span>
+              <span className="text-sm font-bold text-slate-800">
+                {submissions.filter(s => s.status === "At Risk").length}
+              </span>
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* =====================================================================
-         2. SUBMISSIONS LIST SECTION
-         ===================================================================== */}
-      <section className="px-10 -mt-12 relative z-20">
-        <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 lg:col-span-8 space-y-6">
-            
-            {/* Filter Tabs */}
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-6">
-                <button className="font-body text-xs font-bold text-slate-800 border-b-2 border-blue-600 pb-1 uppercase tracking-wider">
-                  All Assets
-                </button>
-                <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
-                  Medical (24)
-                </button>
-                <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
-                  Legal (18)
-                </button>
-                <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
-                  Regulatory (12)
-                </button>
-              </div>
-              <button className="bg-white p-2.5 rounded-xl border border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 transition-all">
-                <Filter className="h-4 w-4" />
+      {/* Main Content Grid (Cockpit Table) */}
+      <div className="flex-1 min-h-0 grid grid-cols-12 gap-6 w-full overflow-hidden">
+        <div className="col-span-12 flex flex-col gap-6 h-full min-h-0">
+          {/* Filter Tabs & Search Bar (shrink-0) */}
+          <div className="flex items-center justify-between px-2 shrink-0">
+            <div className="flex items-center gap-6">
+              <button className="font-body text-xs font-bold text-slate-800 border-b-2 border-blue-600 pb-1 uppercase tracking-wider">
+                All Assets
+              </button>
+              <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
+                Under Review ({submissions.filter(s => s.status === "Under Review").length})
+              </button>
+              <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
+                At Risk ({submissions.filter(s => s.status === "At Risk").length})
+              </button>
+              <button className="font-body text-xs font-bold text-slate-400 hover:text-slate-800 pb-1 transition-colors uppercase tracking-wider">
+                Approved ({submissions.filter(s => s.status === "Approved").length})
               </button>
             </div>
+            <button className="bg-white p-2.5 rounded-xl border border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 transition-all cursor-pointer">
+              <Filter className="h-4 w-4" />
+            </button>
+          </div>
 
-            {/* Submissions Table */}
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
+          {/* Submissions Table Card (flex-1 min-h-0) */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto min-h-0">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-100">
-                    <th className="px-6 py-4 font-body text-xs font-bold text-slate-400 uppercase tracking-wider">Asset Identity</th>
-                    <th className="px-6 py-4 font-body text-xs font-bold text-slate-400 uppercase tracking-wider">Clearance Status</th>
-                    <th className="px-6 py-4 font-body text-xs font-bold text-slate-400 uppercase tracking-wider">Review Cycle</th>
-                    <th className="px-6 py-4 font-body text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                  <tr className="bg-slate-50/70 border-b border-slate-100 sticky top-0 bg-white z-10">
+                    <th className="px-6 py-4 font-body text-[9px] font-bold text-slate-400 uppercase tracking-wider">Asset Identity</th>
+                    <th className="px-6 py-4 font-body text-[9px] font-bold text-slate-400 uppercase tracking-wider">Clearance Status</th>
+                    <th className="px-6 py-4 font-body text-[9px] font-bold text-slate-400 uppercase tracking-wider">Review Cycle</th>
+                    <th className="px-6 py-4 font-body text-[9px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {submissions.map((submission) => (
-                    <tr key={submission.id} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-6">
+                    <tr key={submission.id} className="group hover:bg-slate-50/50 transition-colors text-xs text-slate-700">
+                      <td className="px-6 py-4">
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200/50 flex items-center justify-center text-blue-600">
-                            <submission.icon className="h-6 w-6" />
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/50 flex items-center justify-center text-blue-600 shrink-0">
+                            <submission.icon className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-display text-sm font-bold text-slate-800 truncate">{submission.name}</p>
-                            <p className="font-mono text-[10px] text-slate-400 mt-1">{submission.id} • HCP-Facing</p>
+                            <p className="font-display font-bold text-slate-800 truncate">{submission.name}</p>
+                            <p className="font-mono text-[9px] text-slate-455 mt-1">{submission.id} • HCP-Facing</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-4">
                         <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider">
+                          <div className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-wider">
                             <span className="text-slate-400">M / L / R</span>
                             {submission.status === "At Risk" ? (
-                              <span className="text-red-500 flex items-center gap-0.5 font-extrabold">
+                              <span className="text-red-550 flex items-center gap-0.5 font-extrabold">
                                 <AlertTriangle size={10} /> {submission.status}
                               </span>
+                            ) : submission.status === "Approved" ? (
+                              <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md font-extrabold">
+                                {submission.status}
+                              </span>
                             ) : (
-                              <span className="text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md font-extrabold">
+                              <span className="text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md font-extrabold">
                                 {submission.status}
                               </span>
                             )}
@@ -252,22 +279,22 @@ export function RegulatoryHub() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-4">
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-sans text-xs font-bold text-slate-700">{submission.cycle}</span>
+                          <span className="font-sans font-bold text-slate-700">{submission.cycle}</span>
                           <span className="font-sans text-[10px] text-slate-400">{submission.eta}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-4">
                         <button 
                           onClick={() => openReviewDrawer(submission)}
-                          className={`px-5 py-2 rounded-xl font-body text-xs font-bold transition-all shadow-sm ${
+                          className={`px-4 py-2 rounded-xl font-body text-xs font-bold transition-all shadow-sm cursor-pointer ${
                             submission.status === 'Approved' 
-                              ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' 
+                              ? 'bg-slate-150 text-slate-500 hover:bg-slate-200' 
                               : 'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 shadow-blue-600/10'
                           }`}
                         >
-                          {submission.status === 'Approved' ? 'Archive' : 'Review'}
+                          {submission.status === 'Approved' ? 'View Record' : 'Review Audit'}
                         </button>
                       </td>
                     </tr>
@@ -275,13 +302,12 @@ export function RegulatoryHub() {
                 </tbody>
               </table>
             </div>
-
           </div>
         </div>
-      </section>
+      </div>
 
       {/* =====================================================================
-         3. SLIDE-OUT CONSENSUS COCKPIT DRAWER
+         3. SLIDE-OUT CONSENSUS COCKPIT DRAWER (VIEWPORT-FIT COCKPIT!)
          ===================================================================== */}
       {selectedSub && (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -292,12 +318,12 @@ export function RegulatoryHub() {
           ></div>
 
           {/* Drawer Panel */}
-          <div className="relative w-full max-w-[1000px] h-full bg-white shadow-2xl flex flex-col border-l border-slate-200 z-10 animate-slide-in-right">
+          <div className="relative w-full max-w-[1000px] h-full bg-white shadow-2xl flex flex-col border-l border-slate-200 z-10 animate-slide-in-right overflow-hidden">
             
-            {/* Drawer Header */}
-            <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            {/* Drawer Header (shrink-0) */}
+            <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
                   <Activity size={18} />
                 </div>
                 <div>
@@ -307,38 +333,35 @@ export function RegulatoryHub() {
               </div>
               <button 
                 onClick={closeReviewDrawer}
-                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-all"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Drawer Body (Split View) */}
-            <div className="flex-1 overflow-y-auto p-8 grid grid-cols-10 gap-8">
+            {/* Drawer Body (Split View - Viewport-locked!) */}
+            <div className="flex-1 min-h-0 p-8 grid grid-cols-10 gap-8 overflow-hidden">
               
-              {/* LEFT PANE (60%): FDA Claims Ontology Graph */}
-              <div className="col-span-10 lg:col-span-6 flex flex-col gap-4 bg-slate-50 border border-slate-200/60 rounded-2xl p-6 shadow-inner">
-                <div className="border-b border-slate-200/60 pb-3">
+              {/* LEFT PANE (60%): FDA Claims Ontology Graph (flex-1 h-full) */}
+              <div className="col-span-10 lg:col-span-6 flex flex-col gap-4 bg-slate-50 border border-slate-200/60 rounded-2xl p-6 shadow-inner h-full min-h-0">
+                <div className="border-b border-slate-200/60 pb-3 shrink-0">
                   <h4 className="font-display text-sm font-bold text-slate-800 flex items-center gap-2">
                     <Activity className="text-blue-600" size={14} /> FDA Claims Compliance Map
                   </h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-450 mt-0.5">
                     Relational mapping of clinical trial primary endpoints to secondary marketing claims.
                   </p>
                 </div>
 
-                {/* Graph Canvas */}
-                <div className="flex-1 min-h-[340px] flex items-center justify-center bg-white border border-slate-200 rounded-xl overflow-hidden p-4 relative shadow-sm">
-                  
+                {/* Graph Canvas (flex-1) */}
+                <div className="flex-1 min-h-0 flex items-center justify-center bg-white border border-slate-200 rounded-xl overflow-hidden p-4 relative shadow-sm h-full">
                   {/* Fixed Coordinate Container */}
                   <div className="relative w-[480px] h-[280px] shrink-0" style={{
                     backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                     backgroundSize: '16px 16px'
                   }}>
-                    
                     {/* SVG Connector Lines */}
                     <svg width="100%" height="100%" className="absolute inset-0 z-0 pointer-events-none">
-                      {/* Center to Primary */}
                       {primaryNodes.map(node => (
                         <line 
                           key={node.id}
@@ -350,7 +373,6 @@ export function RegulatoryHub() {
                           strokeWidth="2"
                         />
                       ))}
-                      {/* Primary to Secondary */}
                       {secondaryNodes.map(node => (
                         <line 
                           key={node.id}
@@ -365,7 +387,7 @@ export function RegulatoryHub() {
                       ))}
                     </svg>
 
-                    {/* Center Node (Core Claim) */}
+                    {/* Center Node */}
                     <div 
                       className="absolute z-10 flex flex-col items-center justify-center w-20 h-20 bg-blue-600 border-2 border-white rounded-full shadow-lg shadow-blue-600/20 select-none cursor-pointer hover:scale-105 transition-transform"
                       style={{ left: `${centerNode.x - 40}px`, top: `${centerNode.y - 40}px` }}
@@ -401,35 +423,31 @@ export function RegulatoryHub() {
                         </span>
                       </div>
                     ))}
-
                   </div>
 
-                  {/* Indicator Badge */}
                   <div className="absolute bottom-3 left-3 bg-slate-900 text-white px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider opacity-80">
                     FDA Compliance Map
                   </div>
                 </div>
-
               </div>
 
-              {/* RIGHT PANE (40%): MLR Consensus Voting Stack */}
-              <div className="col-span-10 lg:col-span-4 flex flex-col justify-between gap-6">
+              {/* RIGHT PANE (40%): MLR Consensus Voting Stack (h-full flex flex-col) */}
+              <div className="col-span-10 lg:col-span-4 flex flex-col justify-between h-full min-h-0">
                 
-                <div className="space-y-4">
-                  <div className="border-b border-slate-100 pb-3">
+                <div className="flex flex-col flex-1 min-h-0">
+                  <div className="border-b border-slate-100 pb-3 shrink-0">
                     <h4 className="font-display text-sm font-bold text-slate-800 flex items-center gap-2">
                       <Users className="text-blue-600" size={14} /> MLR Review Consensus
                     </h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-slate-450 mt-0.5">
                       Real-time voting alignment of Medical, Legal, and Regulatory leads.
                     </p>
                   </div>
 
-                  {/* Reviewer Cards Stack */}
-                  <div className="space-y-3">
-                    
+                  {/* Reviewer Cards Stack (flex-1 scrollable) */}
+                  <div className="flex-1 overflow-y-auto min-h-0 space-y-3 mt-4 pr-1">
                     {/* Medical Affairs (Approved) */}
-                    <div className="p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between shadow-sm">
+                    <div className="p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between shadow-sm shrink-0">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
                           SJ
@@ -444,8 +462,12 @@ export function RegulatoryHub() {
                       </span>
                     </div>
 
-                    {/* Legal Affairs (Approved) */}
-                    <div className="p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between shadow-sm">
+                    {/* Legal Affairs (Approved or Pending) */}
+                    <div className={`p-3.5 border rounded-2xl flex items-center justify-between shadow-sm shrink-0 ${
+                      selectedSub.status === "At Risk" 
+                        ? "bg-amber-50/60 border-amber-100" 
+                        : "bg-emerald-50 border-emerald-100"
+                    }`}>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center text-xs font-bold">
                           RL
@@ -455,13 +477,19 @@ export function RegulatoryHub() {
                           <span className="text-[9px] text-slate-400">Legal Compliance Lead</span>
                         </div>
                       </div>
-                      <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-emerald-600 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-lg shadow-sm">
-                        <CheckCircle2 size={10} /> Approved
-                      </span>
+                      {selectedSub.status === "At Risk" ? (
+                        <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-lg shadow-sm">
+                          Pending Revisions
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-emerald-600 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-lg shadow-sm">
+                          <CheckCircle2 size={10} /> Approved
+                        </span>
+                      )}
                     </div>
 
                     {/* Regulatory Affairs (Interactive) */}
-                    <div className={`p-3.5 rounded-2xl flex items-center justify-between border transition-all ${
+                    <div className={`p-3.5 rounded-2xl flex items-center justify-between border transition-all shrink-0 ${
                       regVote === "Approved" 
                         ? "bg-emerald-50 border-emerald-100 shadow-sm" 
                         : "bg-amber-50/60 border-amber-100 shadow-sm"
@@ -484,26 +512,33 @@ export function RegulatoryHub() {
                         <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-emerald-600 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-lg shadow-sm">
                           <CheckCircle2 size={10} /> Approved
                         </span>
+                      ) : selectedSub.status === "At Risk" ? (
+                        <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-lg">
+                          Blocked
+                        </span>
                       ) : (
                         <button 
                           onClick={handleCastRegulatoryVote}
-                          className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-white bg-amber-500 hover:bg-amber-600 border border-amber-400 px-3 py-1 rounded-lg shadow-sm transition-all"
+                          className="flex items-center gap-1 text-[9px] font-extrabold uppercase text-white bg-amber-500 hover:bg-amber-600 border border-amber-400 px-3 py-1 rounded-lg shadow-sm transition-all cursor-pointer"
                         >
                           Cast Vote
                         </button>
                       )}
                     </div>
-
                   </div>
                 </div>
 
-                {/* Consensus Progress Bar & Submit Gate */}
-                <div className="border-t border-slate-100 pt-5 flex flex-col gap-4">
+                {/* Consensus Progress Bar & Submit Gate (shrink-0) */}
+                <div className="border-t border-slate-100 pt-4 flex flex-col gap-4 shrink-0">
                   <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between items-center text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
                       <span>Consensus Progress ({consensusCount}/3 Approved)</span>
                       <span className={allApproved ? "text-emerald-600" : "text-amber-600"}>
-                        {allApproved ? "Consensus Reached" : "Pending Regulatory Sign-Off"}
+                        {selectedSub.status === "At Risk" 
+                          ? "Blocked by Compliance" 
+                          : allApproved 
+                            ? "Consensus Reached" 
+                            : "Pending Regulatory Sign-Off"}
                       </span>
                     </div>
                     
@@ -521,15 +556,15 @@ export function RegulatoryHub() {
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={closeReviewDrawer}
-                      className="py-3 border border-slate-200 text-slate-600 rounded-xl font-body text-xs font-bold hover:bg-slate-50 transition-colors"
+                      className="py-3 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-body text-xs font-bold transition-colors cursor-pointer"
                     >
-                      Request Revisions
+                      Close Review
                     </button>
                     <button 
-                      disabled={!allApproved}
+                      disabled={!allApproved || selectedSub.status === "At Risk"}
                       onClick={handleFinalApproval}
-                      className={`py-3 text-white rounded-xl font-body text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
-                        allApproved 
+                      className={`py-3 text-white rounded-xl font-body text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        allApproved && selectedSub.status !== "At Risk"
                           ? "bg-blue-600 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 shadow-blue-600/20" 
                           : "bg-slate-300 shadow-none cursor-not-allowed"
                       }`}

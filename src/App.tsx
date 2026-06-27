@@ -34,8 +34,8 @@ export default function App() {
                   {/* Header */}
                   <Header />
                   
-                  {/* Scrollable Page Wrapper */}
-                  <main className="flex-1 overflow-y-auto pt-16">
+                  {/* Viewport-locked Page Wrapper */}
+                  <main className="flex-1 overflow-hidden pt-16 h-full flex flex-col">
                     <Routes>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/campaigns" element={<Campaigns />} />

@@ -31,132 +31,156 @@ const cohortData = [
 ];
 
 const CohortRow = ({ cohort }) => (
-  <tr className="hover:bg-slate-100/50 transition-colors group">
-    <td className="px-8 py-6">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-600 font-mono font-bold">{cohort.id}</div>
-        <div>
-          <p className="font-body font-bold text-sm text-slate-800">{cohort.name}</p>
-          <p className="font-sans text-xs text-slate-500">{cohort.tier}</p>
+  <tr className="hover:bg-slate-55/40 transition-colors group text-xs text-slate-700">
+    <td className="px-6 py-4">
+      <div className="flex items-center gap-3.5">
+        <div className="w-9 h-9 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-600 font-mono font-bold shrink-0">
+          {cohort.id}
+        </div>
+        <div className="min-w-0">
+          <p className="font-body font-bold text-slate-800 truncate">{cohort.name}</p>
+          <p className="font-sans text-[10px] text-slate-450 mt-0.5">{cohort.tier}</p>
         </div>
       </div>
     </td>
-    <td className="px-8 py-6 text-center font-mono text-sm">{cohort.reach}</td>
-    <td className="px-8 py-6">
+    <td className="px-6 py-4 text-center font-mono">{cohort.reach}</td>
+    <td className="px-6 py-4">
       <div className="flex flex-col items-center gap-1">
-        <span className="font-mono text-sm text-blue-600">{cohort.engagement}%</span>
-        <div className="w-16 h-1 bg-slate-200 rounded-full overflow-hidden">
+        <span className="font-mono text-blue-600 font-bold">{cohort.engagement}%</span>
+        <div className="w-14 h-1 bg-slate-100 rounded-full overflow-hidden">
           <div className="h-full bg-blue-600" style={{ width: `${cohort.engagement}%` }}></div>
         </div>
       </div>
     </td>
-    <td className="px-8 py-6">
-      <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 font-body font-bold text-[10px] uppercase">{cohort.affinity}</span>
+    <td className="px-6 py-4">
+      <span className="px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-650 font-body font-bold text-[9px] uppercase border border-orange-500/10">
+        {cohort.affinity}
+      </span>
     </td>
-    <td className="px-8 py-6 text-right">
-      <span className="font-display text-lg text-slate-900">{cohort.impact}</span>
+    <td className="px-6 py-4 text-right">
+      <span className="font-display font-bold text-slate-850 text-sm">{cohort.impact}</span>
     </td>
   </tr>
 );
 
 export function AudienceIntelligence() {
   return (
-    <div className="flex flex-col w-full min-h-screen bg-slate-100/50">
-      <section className="relative px-8 pt-12 pb-24 overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 bg-orange-500/5 rounded-full blur-[80px] pointer-events-none"></div>
-        <div className="flex items-end justify-between relative z-10">
-          <div className="max-w-3xl">
-            <span className="font-body text-xs text-blue-600 uppercase tracking-[0.2em] font-bold mb-4 block">Intelligence Core</span>
-            <h1 className="font-display text-8xl leading-[0.9] tracking-tighter text-slate-900 mb-6">
-              Audience <span className="text-slate-300 italic">M01</span><br/>Architecture
-            </h1>
-            <p className="font-sans text-base text-slate-600 max-w-xl">
-              Dynamic HCP segmentation across 42 therapeutic areas. Leveraging real-world evidence and behavioral signals to decode physician engagement patterns.
+    <div className="w-full h-full flex flex-col p-8 gap-6 overflow-hidden bg-slate-50">
+      
+      {/* Compact Cockpit Header */}
+      <header className="flex justify-between items-center shrink-0 bg-white p-6 rounded-3xl border border-slate-200/50 shadow-sm">
+        <div>
+          <span className="px-2.5 py-0.5 bg-blue-600/10 rounded-full text-blue-600 font-body text-[9px] uppercase tracking-widest font-bold">
+            Intelligence Core
+          </span>
+          <h1 className="font-display text-2xl font-bold text-slate-900 mt-1.5">
+            Audience Architecture
+          </h1>
+        </div>
+        <div className="flex gap-3">
+          <div className="px-4 py-2 bg-slate-50 border border-slate-200/30 rounded-xl flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
+            <span className="font-body text-[10px] font-bold text-slate-600">Live Syncing</span>
+          </div>
+          <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-body text-xs font-bold shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
+            Export Cohort
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Grid (Cockpit View) */}
+      <div className="flex-1 min-h-0 grid grid-cols-12 gap-6 w-full overflow-hidden">
+        
+        {/* Left Column (4 Columns) - Geo-Density Globe Map */}
+        <div className="col-span-12 lg:col-span-4 bg-slate-900 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between shadow-xl h-full min-h-0 text-white">
+          <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+          <Globe className="absolute -bottom-1/4 -left-1/4 w-3/4 h-3/4 text-white/5 pointer-events-none" />
+          
+          <div className="relative z-10 shrink-0">
+            <span className="font-body text-[9px] text-white/60 uppercase tracking-widest block">Geographic Distribution</span>
+            <h3 className="font-display text-lg font-bold mt-2">Geo-Density Mapping</h3>
+            <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+              Real-world telemetry density across active oncology trials and regional clinics.
             </p>
           </div>
-          <div className="flex gap-4 pb-4">
-            <div className="px-6 py-3 bg-white rounded-full flex items-center gap-3 shadow-sm">
-              <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-              <span className="font-body text-xs font-bold">Live Synching</span>
+
+          {/* Geo Stats Card */}
+          <div className="relative z-10 bg-white/5 border border-white/10 p-5 rounded-2xl shadow-2xl shrink-0 mt-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <span className="font-body text-[10px] text-white/65 uppercase tracking-wider">Active Regions</span>
+              <BarChart size={14} className="text-blue-400" />
             </div>
-            <button className="px-8 py-3 bg-blue-600 text-white rounded-full font-body text-xs font-bold shadow-lg shadow-blue-600/20 hover:-translate-y-0.5 transition-transform">
-              Export Cohort
-            </button>
-          </div>
-        </div>
-      </section>
-      <section className="px-8 -mt-12 mb-12">
-        <div className="bg-white rounded-3xl p-1 shadow-md overflow-hidden">
-          <div className="relative w-full h-[540px] rounded-[22px] overflow-hidden group bg-slate-900">
-            <Globe className="absolute -bottom-1/4 -left-1/4 w-3/4 h-3/4 text-white/5" />
-            <div className="absolute top-8 left-8 bg-black/50 backdrop-blur-md p-6 rounded-2xl w-80 border border-white/10 shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                <span className="font-body text-xs text-white/60 uppercase tracking-widest">Geo-Density</span>
-                <BarChart className="text-blue-400" />
-              </div>
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="font-sans text-sm text-white/80">North America</span>
-                    <span className="font-mono text-sm text-white">84%</span>
-                  </div>
-                  <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-400 w-[84%]"></div>
-                  </div>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-1.5 text-xs">
+                  <span className="text-white/80">North America</span>
+                  <span className="font-mono font-bold">84%</span>
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="font-sans text-sm text-white/80">European Union</span>
-                    <span className="font-mono text-sm text-white">62%</span>
-                  </div>
-                  <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-orange-400 w-[62%]"></div>
-                  </div>
+                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-400 w-[84%]"></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1.5 text-xs">
+                  <span className="text-white/80">European Union</span>
+                  <span className="font-mono font-bold">62%</span>
+                </div>
+                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-orange-400 w-[62%]"></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
-      <section className="px-8 pb-32">
-        <div className="flex items-end justify-between mb-12">
-          <div>
-            <h2 className="font-display text-2xl text-slate-900 mb-2">Segment Granularity</h2>
-            <p className="font-sans text-sm text-slate-500">Deep dive into behavioral metrics for active targeting.</p>
+
+        {/* Right Column (8 Columns) - Segment Granularity Table */}
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 h-full min-h-0">
+          {/* Table Header Controls (shrink-0) */}
+          <div className="flex items-end justify-between shrink-0 px-2">
+            <div>
+              <h2 className="font-display text-base font-bold text-slate-900">Segment Granularity</h2>
+              <p className="font-sans text-[11px] text-slate-500 mt-0.5">Deep dive into behavioral metrics for active targeting.</p>
+            </div>
+            <div className="flex bg-slate-200/60 p-0.5 rounded-xl gap-1">
+              <button className="px-4 py-1.5 bg-white rounded-lg font-body text-[10px] font-bold shadow-sm cursor-pointer">Current Month</button>
+              <button className="px-4 py-1.5 font-body text-[10px] font-bold text-slate-500 cursor-pointer">Historical</button>
+            </div>
           </div>
-          <div className="flex bg-slate-200 rounded-full p-1">
-            <button className="px-6 py-2 bg-white rounded-full font-body text-xs font-bold shadow-sm">Current Month</button>
-            <button className="px-6 py-2 font-body text-xs font-bold text-slate-500">Historical</button>
+
+          {/* Table Card (flex-1) */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/50 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 sticky top-0 bg-white border-b border-slate-100 z-10">
+                    <th className="px-6 py-4 font-body font-bold text-[9px] text-slate-400 uppercase tracking-wider">Cohort Identifier</th>
+                    <th className="px-6 py-4 font-body font-bold text-[9px] text-slate-400 uppercase tracking-wider text-center">Reach</th>
+                    <th className="px-6 py-4 font-body font-bold text-[9px] text-slate-400 uppercase tracking-wider text-center">Engagement</th>
+                    <th className="px-6 py-4 font-body font-bold text-[9px] text-slate-400 uppercase tracking-wider">Top Affinity</th>
+                    <th className="px-6 py-4 font-body font-bold text-[9px] text-slate-400 uppercase tracking-wider text-right">Potential Impact</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/70">
+                  {cohortData.map(cohort => <CohortRow key={cohort.id} cohort={cohort} />)}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-8 py-6 font-body font-bold text-xs text-slate-500 uppercase tracking-wider">Cohort Identifier</th>
-                <th className="px-8 py-6 font-body font-bold text-xs text-slate-500 uppercase tracking-wider text-center">Reach</th>
-                <th className="px-8 py-6 font-body font-bold text-xs text-slate-500 uppercase tracking-wider text-center">Engagement</th>
-                <th className="px-8 py-6 font-body font-bold text-xs text-slate-500 uppercase tracking-wider">Top Affinity</th>
-                <th className="px-8 py-6 font-body font-bold text-xs text-slate-500 uppercase tracking-wider text-right">Potential Impact</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/70">
-              {cohortData.map(cohort => <CohortRow key={cohort.id} cohort={cohort} />)}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 bg-slate-900/80 backdrop-blur-2xl rounded-full shadow-2xl border border-white/10">
-        <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full font-body text-xs font-bold">
-          <Plus className="h-5 w-5" />
+
+      </div>
+
+      {/* Floating Action Bar (absolute cockpit footer) */}
+      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-45 flex items-center gap-2 p-1.5 bg-slate-900/90 backdrop-blur-2xl rounded-full shadow-2xl border border-white/10 select-none">
+        <button className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white rounded-full font-body text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors">
+          <Plus className="h-4 w-4" />
           Create Segment
         </button>
-        <button className="w-12 h-12 flex items-center justify-center text-white/60 hover:text-white transition-colors">
-          <Share />
+        <button className="w-10 h-10 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer">
+          <Share size={16} />
         </button>
-        <button className="w-12 h-12 flex items-center justify-center text-white/60 hover:text-white transition-colors">
-          <Settings />
+        <button className="w-10 h-10 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer">
+          <Settings size={16} />
         </button>
       </div>
     </div>
