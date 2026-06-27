@@ -456,10 +456,10 @@ def generate_image_endpoint(input_data: ImageGenerationInput):
         if not GEMINI_API_KEY:
             logger.warning("GEMINI_API_KEY is not configured. Running image generation in high-fidelity simulation mode...")
             mock_images = {
-                "clinical-realism": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?q=80&w=800", # clean clinical lab
-                "microbiology-3d": "https://images.unsplash.com/photo-1532187643603-ba119ca4109e?q=80&w=800", # cells/microbiology
-                "clean-vector": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800", # abstract art/vector
-                "futuristic-hologram": "https://images.unsplash.com/photo-1507668077129-56e32842fceb?q=80&w=800" # neon tech/hologram
+                "clinical-realism": "/samples/clinical-realism.jpg",
+                "microbiology-3d": "/samples/microbiology-3d.jpg",
+                "clean-vector": "/samples/clean-vector.jpg",
+                "futuristic-hologram": "/samples/futuristic-hologram.jpg"
             }
             mock_url = mock_images.get(style_preset, "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800")
             return {
@@ -562,10 +562,10 @@ def generate_image_endpoint(input_data: ImageGenerationInput):
         
         # High-fidelity simulation fallback
         mock_images = {
-            "clinical-realism": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?q=80&w=800",
-            "microbiology-3d": "https://images.unsplash.com/photo-1532187643603-ba119ca4109e?q=80&w=800",
-            "clean-vector": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800",
-            "futuristic-hologram": "https://images.unsplash.com/photo-1507668077129-56e32842fceb?q=80&w=800"
+            "clinical-realism": "/samples/clinical-realism.jpg",
+            "microbiology-3d": "/samples/microbiology-3d.jpg",
+            "clean-vector": "/samples/clean-vector.jpg",
+            "futuristic-hologram": "/samples/futuristic-hologram.jpg"
         }
         mock_url = mock_images.get(style_preset, "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800")
         filename = f"simulated_{style_preset}_{int(time.time())}.png"

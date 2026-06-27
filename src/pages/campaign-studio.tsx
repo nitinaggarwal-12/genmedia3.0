@@ -267,7 +267,9 @@ export function CampaignStudio() {
         });
         
         if (data.success && data.image_url) {
-          const resolvedUrl = getApiUrl(data.image_url);
+          const resolvedUrl = data.image_url.startsWith("/samples/") 
+            ? data.image_url 
+            : getApiUrl(data.image_url);
           
           const newAsset = {
             name: data.filename,
