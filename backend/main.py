@@ -528,8 +528,8 @@ def generate_image_endpoint(input_data: ImageGenerationInput):
                 prompt=final_prompt,
                 config=types.GenerateImagesConfig(
                     number_of_images=1,
-                    aspect_ratio=aspect_ratio,
-                    negative_prompt=negative_prompt
+                    aspect_ratio=aspect_ratio
+                    # negative_prompt is not supported in developer API mode, so we rely on the prompt-injected "(avoid: ...)" instead.
                 )
             )
             
