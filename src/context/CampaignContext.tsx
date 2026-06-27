@@ -510,18 +510,25 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  // SETTINGS & LOGS
   const updateSettings = (updates: Partial<Omit<SystemSettings, "auditLogs">>) => {
-    const newSettings = { ...settings, ...updates };
-    saveSettings(newSettings);
-    addAuditLog(`System configurations updated.`, "INFO");
+    setSettings(prev => {
+      const newSettings = { ...prev, ...updates };
+      const newLog = { timestamp: Date.now(), level: "INFO" as const, message: "System configurations updated." };
+      const updatedLogs = [newLog, ...newSettings.auditLogs].slice(0, 50);
+      const finalSettings = { ...newSettings, auditLogs: updatedLogs };
+      localStorage.setItem("maestro_settings", JSON.stringify(finalSettings));
+      return finalSettings;
+    });
   };
 
   const addAuditLog = (message: string, level: "INFO" | "WARN" | "SUCCESS" = "INFO") => {
-    const newLog = { timestamp: Date.now(), level, message };
-    const updatedLogs = [newLog, ...settings.auditLogs].slice(0, 50); // Keep last 50 logs
-    const newSettings = { ...settings, auditLogs: updatedLogs };
-    saveSettings(newSettings);
+    setSettings(prev => {
+      const newLog = { timestamp: Date.now(), level, message };
+      const updatedLogs = [newLog, ...prev.auditLogs].slice(0, 50);
+      const newSettings = { ...prev, auditLogs: updatedLogs };
+      localStorage.setItem("maestro_settings", JSON.stringify(newSettings));
+      return newSettings;
+    });
   };
 
   const clearAuditLogs = () => {
