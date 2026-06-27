@@ -28,16 +28,19 @@ export function CampaignStudio() {
   );
 
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300");
+  const [activeAssetType, setActiveAssetType] = useState<"image" | "video">("image");
   const [assets, setAssets] = useState([
     {
       name: "Hero_Visual_Global_v2.jpg",
       size: "12.4 MB",
       resolution: "4000 x 3000px",
       url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300",
-      status: "Compliant"
+      status: "Compliant" as const,
+      type: "image" as "image" | "video"
     }
   ]);
   const [showImagenModal, setShowImagenModal] = useState(false);
+  const [activeCreatorTab, setActiveCreatorTab] = useState<"image" | "video">("image");
   
   // Imagen Modal Form State
   const [imagenPrompt, setImagenPrompt] = useState("A high-tech laboratory setting with microscopic cell structures in the background, representing breakthrough oncology treatment");
@@ -46,49 +49,98 @@ export function CampaignStudio() {
   const [imagenStyle, setImagenStyle] = useState("clinical-realism");
   const [imagenAspectRatio, setImagenAspectRatio] = useState("16:9");
   const [imagenModel, setImagenModel] = useState("imagen-3.0-generate-002");
+  
+  // Veo Modal Form State
+  const [videoPrompt, setVideoPrompt] = useState("A cinematic dolly shot moving through a modern oncology laboratory, researchers in the background, high-tech microscope in focus");
+  const [videoNegative, setVideoNegative] = useState("blurry, low quality, distorted text, human faces, shaky camera");
+  const [videoAspectRatio, setVideoAspectRatio] = useState("16:9");
+  const [videoDuration, setVideoDuration] = useState(5);
+  const [videoMotion, setVideoMotion] = useState("medium");
+  const [videoModel, setVideoModel] = useState("veo-2.0-generate-001");
+  
   const [synthIdEnabled, setSynthIdEnabled] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
-  const handleGenerateImage = async (e: React.FormEvent) => {
+  const handleGenerateAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
     setGenerationError(null);
     try {
-      const data = await apiFetch("/api/generate-image", {
-        method: "POST",
-        body: JSON.stringify({
-          prompt: imagenPrompt,
-          negative_prompt: imagenNegative || null,
-          aspect_ratio: imagenAspectRatio,
-          brand: imagenBrand,
-          style_preset: imagenStyle,
-          model_name: imagenModel
-        })
-      });
-      
-      if (data.success && data.image_url) {
-        const resolvedUrl = getApiUrl(data.image_url);
+      if (activeCreatorTab === "image") {
+        const data = await apiFetch("/api/generate-image", {
+          method: "POST",
+          body: JSON.stringify({
+            prompt: imagenPrompt,
+            negative_prompt: imagenNegative || null,
+            aspect_ratio: imagenAspectRatio,
+            brand: imagenBrand,
+            style_preset: imagenStyle,
+            model_name: imagenModel
+          })
+        });
         
-        const newAsset = {
-          name: data.filename,
-          size: "2.8 MB",
-          resolution: imagenAspectRatio === "16:9" ? "1920 x 1080px" : "1024 x 1024px",
-          url: resolvedUrl,
-          status: "Compliant"
-        };
+        if (data.success && data.image_url) {
+          const resolvedUrl = getApiUrl(data.image_url);
+          
+          const newAsset = {
+            name: data.filename,
+            size: "2.8 MB",
+            resolution: imagenAspectRatio === "16:9" ? "1920 x 1080px" : "1024 x 1024px",
+            url: resolvedUrl,
+            status: "Compliant" as const,
+            type: "image" as const
+          };
+          
+          setAssets(prev => [newAsset, ...prev]);
+          setHeroImage(resolvedUrl);
+          setActiveAssetType("image");
+          setShowImagenModal(false);
+        }
+      } else {
+        // Video generation
+        const data = await apiFetch("/api/generate-video", {
+          method: "POST",
+          body: JSON.stringify({
+            prompt: videoPrompt,
+            negative_prompt: videoNegative || null,
+            aspect_ratio: videoAspectRatio,
+            duration_seconds: videoDuration,
+            motion_level: videoMotion,
+            brand: imagenBrand, // reuse brand
+            style_preset: imagenStyle, // reuse style preset
+            model_name: videoModel
+          })
+        });
         
-        setAssets(prev => [newAsset, ...prev]);
-        setHeroImage(resolvedUrl);
-        setShowImagenModal(false);
+        if (data.success && data.video_url) {
+          const resolvedUrl = data.video_url.startsWith("http") 
+            ? data.video_url 
+            : getApiUrl(data.video_url);
+          
+          const newAsset = {
+            name: data.filename,
+            size: `${(videoDuration * 1.8).toFixed(1)} MB`,
+            resolution: videoAspectRatio === "16:9" ? "1280 x 720px" : "1024 x 1024px",
+            url: resolvedUrl,
+            status: "Compliant" as const,
+            type: "video" as const
+          };
+          
+          setAssets(prev => [newAsset, ...prev]);
+          setHeroImage(resolvedUrl);
+          setActiveAssetType("video");
+          setShowImagenModal(false);
+        }
       }
     } catch (err: any) {
       console.error(err);
-      setGenerationError(err.message || "Failed to generate image.");
+      setGenerationError(err.message || `Failed to generate ${activeCreatorTab}.`);
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
   // Stepper definition
@@ -315,7 +367,7 @@ export function CampaignStudio() {
                     className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-body text-[10px] font-bold shadow-md shadow-blue-600/10 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Sparkles size={12} />
-                    <span>Imagen 3 Creator</span>
+                    <span>Asset Creator</span>
                   </button>
                 </div>
 
@@ -324,10 +376,22 @@ export function CampaignStudio() {
                     <div 
                       key={idx} 
                       className={`p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors cursor-pointer ${heroImage === asset.url ? "bg-slate-50/70" : ""}`}
-                      onClick={() => setHeroImage(asset.url)}
+                      onClick={() => {
+                        setHeroImage(asset.url);
+                        setActiveAssetType(asset.type);
+                      }}
                     >
-                      <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50">
-                        <img alt={asset.name} className="w-full h-full object-cover" src={asset.url}/>
+                      <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50 relative">
+                        {asset.type === "video" ? (
+                          <>
+                            <video src={asset.url} className="w-full h-full object-cover" muted playsInline />
+                            <div className="absolute inset-0 bg-slate-950/30 flex items-center justify-center text-white font-bold text-[8px] uppercase tracking-wider">
+                              Video
+                            </div>
+                          </>
+                        ) : (
+                          <img alt={asset.name} className="w-full h-full object-cover" src={asset.url}/>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-display text-sm font-bold text-slate-800 truncate">{asset.name}</h4>
@@ -347,7 +411,9 @@ export function CampaignStudio() {
                             e.stopPropagation();
                             setAssets(prev => prev.filter((_, i) => i !== idx));
                             if (heroImage === asset.url && assets.length > 1) {
-                              setHeroImage(assets[idx === 0 ? 1 : idx - 1].url);
+                              const fallbackAsset = assets[idx === 0 ? 1 : idx - 1];
+                              setHeroImage(fallbackAsset.url);
+                              setActiveAssetType(fallbackAsset.type);
                             }
                           }}
                           className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
@@ -359,6 +425,7 @@ export function CampaignStudio() {
                   ))}
                 </div>
               </div>
+
 
 
             </div>
@@ -451,7 +518,18 @@ export function CampaignStudio() {
                     </p>
                   </div>
                   <div className="w-20 h-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700/50 shrink-0">
-                    <img src={heroImage} className="w-full h-full object-cover" alt="Slide Visual" />
+                    {activeAssetType === "video" ? (
+                      <video 
+                        src={heroImage} 
+                        className="w-full h-full object-cover" 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline 
+                      />
+                    ) : (
+                      <img src={heroImage} className="w-full h-full object-cover" alt="Slide Visual" />
+                    )}
                   </div>
                 </div>
 
@@ -468,6 +546,7 @@ export function CampaignStudio() {
                   </div>
                 )}
               </div>
+
 
 
             </div>
@@ -672,7 +751,7 @@ export function CampaignStudio() {
         <div className="h-16 w-px bg-slate-300"></div>
       </div>
 
-      {/* Imagen 3 Modal Overlay */}
+      {/* Imagen 3 / Veo Creator Modal Overlay */}
       {showImagenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200/80 p-8 space-y-6 overflow-y-auto max-h-[90vh]">
@@ -681,7 +760,9 @@ export function CampaignStudio() {
                 <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
                   <Sparkles size={16} />
                 </div>
-                <h3 className="font-display text-base font-bold text-slate-900">Google Imagen 3 Asset Creator</h3>
+                <h3 className="font-display text-base font-bold text-slate-900">
+                  Google {activeCreatorTab === "image" ? "Imagen 3" : "Veo"} Asset Creator
+                </h3>
               </div>
               <button 
                 onClick={() => setShowImagenModal(false)}
@@ -691,36 +772,185 @@ export function CampaignStudio() {
               </button>
             </div>
 
+            {/* Tab Selector */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/40">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCreatorTab("image");
+                  setGenerationError(null);
+                }}
+                className={`flex-1 py-2 rounded-xl font-body text-xs font-bold transition-all cursor-pointer ${
+                  activeCreatorTab === "image"
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                🎨 Image (Imagen 3)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCreatorTab("video");
+                  setGenerationError(null);
+                }}
+                className={`flex-1 py-2 rounded-xl font-body text-xs font-bold transition-all cursor-pointer ${
+                  activeCreatorTab === "video"
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                🎥 Video (Veo)
+              </button>
+            </div>
+
             {generationError && (
               <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl">
                 <strong>Error:</strong> {generationError}
               </div>
             )}
 
-            <form onSubmit={handleGenerateImage} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Image Prompt</label>
-                <textarea
-                  required
-                  value={imagenPrompt}
-                  onChange={(e) => setImagenPrompt(e.target.value)}
-                  className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700 resize-none leading-relaxed"
-                  placeholder="Describe the image you want to generate..."
-                />
-              </div>
+            <form onSubmit={handleGenerateAsset} className="space-y-4">
+              
+              {/* IMAGE GENERATOR FIELDS */}
+              {activeCreatorTab === "image" && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Image Prompt</label>
+                    <textarea
+                      required
+                      value={imagenPrompt}
+                      onChange={(e) => setImagenPrompt(e.target.value)}
+                      className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700 resize-none leading-relaxed"
+                      placeholder="Describe the image you want to generate..."
+                    />
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exclusion Criteria (Negative Prompt)</label>
-                <input
-                  type="text"
-                  value={imagenNegative}
-                  onChange={(e) => setImagenNegative(e.target.value)}
-                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
-                  placeholder="Things to avoid (e.g. blurry, low quality, faces)..."
-                />
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exclusion Criteria (Negative Prompt)</label>
+                    <input
+                      type="text"
+                      value={imagenNegative}
+                      onChange={(e) => setImagenNegative(e.target.value)}
+                      className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      placeholder="Things to avoid (e.g. blurry, low quality, faces)..."
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Aspect Ratio</label>
+                      <select
+                        value={imagenAspectRatio}
+                        onChange={(e) => setImagenAspectRatio(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="4:3">4:3 (Standard)</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="3:4">3:4 (Portrait)</option>
+                        <option value="9:16">9:16 (Tall)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model Selection</label>
+                      <select
+                        value={imagenModel}
+                        onChange={(e) => setImagenModel(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="imagen-3.0-generate-002">Imagen 3.0 Generate (Production)</option>
+                        <option value="gemini-3-pro-image">Gemini 3 Pro Image (Ultra Preview)</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* VIDEO GENERATOR FIELDS */}
+              {activeCreatorTab === "video" && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Video Prompt</label>
+                    <textarea
+                      required
+                      value={videoPrompt}
+                      onChange={(e) => setVideoPrompt(e.target.value)}
+                      className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700 resize-none leading-relaxed"
+                      placeholder="Describe the cinematic video scene you want to generate..."
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exclusion Criteria (Negative Prompt)</label>
+                    <input
+                      type="text"
+                      value={videoNegative}
+                      onChange={(e) => setVideoNegative(e.target.value)}
+                      className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      placeholder="Things to avoid (e.g. shaky camera, low quality, text)..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Aspect Ratio</label>
+                      <select
+                        value={videoAspectRatio}
+                        onChange={(e) => setVideoAspectRatio(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="9:16">9:16 (Vertical)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model Selection</label>
+                      <select
+                        value={videoModel}
+                        onChange={(e) => setVideoModel(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="veo-2.0-generate-001">Google Veo 2.0 (High Quality)</option>
+                        <option value="veo-1.0-generate-001">Google Veo 1.0 (Fast Draft)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Duration (Seconds)</label>
+                      <select
+                        value={videoDuration}
+                        onChange={(e) => setVideoDuration(parseInt(e.target.value))}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value={5}>5 Seconds</option>
+                        <option value={6}>6 Seconds</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Motion Level</label>
+                      <select
+                        value={videoMotion}
+                        onChange={(e) => setVideoMotion(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="low">Low Motion (Stable)</option>
+                        <option value="medium">Medium Motion (Cinematic)</option>
+                        <option value="high">High Motion (Dynamic)</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* COMMON FIELDS */}
+              <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Style Preset</label>
                   <select
@@ -732,36 +962,6 @@ export function CampaignStudio() {
                     <option value="microbiology-3d">Microbiology 3D (Scientific Render)</option>
                     <option value="clean-vector">Clean Vector (Minimalist Graphic)</option>
                     <option value="futuristic-hologram">Futuristic Hologram (Sci-Fi HUD)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Aspect Ratio</label>
-                  <select
-                    value={imagenAspectRatio}
-                    onChange={(e) => setImagenAspectRatio(e.target.value)}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
-                  >
-                    <option value="16:9">16:9 (Landscape)</option>
-                    <option value="4:3">4:3 (Standard)</option>
-                    <option value="1:1">1:1 (Square)</option>
-                    <option value="3:4">3:4 (Portrait)</option>
-                    <option value="9:16">9:16 (Tall)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model Selection</label>
-                  <select
-                    value={imagenModel}
-                    onChange={(e) => setImagenModel(e.target.value)}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
-                  >
-                    <option value="imagen-3.0-generate-002">Imagen 3.0 Generate (Production)</option>
-                    <option value="gemini-3-pro-image">Gemini 3 Pro Image (Ultra Preview)</option>
-                    <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image (Fast Preview)</option>
                   </select>
                 </div>
 
@@ -827,7 +1027,7 @@ export function CampaignStudio() {
                   ) : (
                     <>
                       <Sparkles size={14} />
-                      <span>Generate Asset</span>
+                      <span>Generate {activeCreatorTab === "image" ? "Asset" : "Video"}</span>
                     </>
                   )}
                 </button>
@@ -836,6 +1036,7 @@ export function CampaignStudio() {
           </div>
         </div>
       )}
+
 
     </div>
   );
