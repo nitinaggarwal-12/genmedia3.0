@@ -9,7 +9,8 @@ from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import pdfplumber
 
 
@@ -33,14 +34,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Gemini SDK
+# Initialize Gemini SDK (New google-genai SDK Client)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+client = None
+
 if GEMINI_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        logger.info("Google Generative AI SDK configured successfully.")
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        logger.info("Google GenAI client initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to configure Google Generative AI SDK: {e}")
+        logger.error(f"Failed to initialize Google GenAI client: {e}")
 else:
     logger.warning("GEMINI_API_KEY environment variable is not set. The backend will run in simulation/mock mode for AI endpoints.")
 
@@ -202,20 +205,18 @@ async def scan_copy(request: ScanRequest):
         "Do not include any markdown format tags like ```json in the output. Return only raw JSON."
     )
 
-    if GEMINI_API_KEY:
+    if client:
         try:
-            model = genai.GenerativeModel(
-                model_name="gemini-1.5-pro",
-                generation_config={"response_mime_type": "application/json"}
-            )
-            
             prompt = f"Analyze this copy:\n\n{request.copy}"
             
-            response = model.generate_content(
-                contents=[prompt],
-                generation_config=genai.types.GenerationConfig(
+            # Use new SDK's native Pydantic structured outputs!
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     response_mime_type="application/json",
+                    response_schema=ScanResponse,
                     temperature=0.1
                 )
             )
@@ -294,10 +295,8 @@ async def ground_pdf(file: UploadFile = File(...)):
     grounding_coordinates = []
     
     # 1. AI Claim Extraction
-    if GEMINI_API_KEY:
+    if client:
         try:
-            model = genai.GenerativeModel("gemini-1.5-pro")
-            
             prompt = (
                 "You are a Clinical Data Extraction Bot. "
                 "Analyze this clinical trial PDF and extract these exact three metrics if present:\n"
@@ -318,16 +317,17 @@ async def ground_pdf(file: UploadFile = File(...)):
                 "If a metric is not present, omit it from the JSON. Output only valid JSON."
             )
             
-            # Pass PDF bytes directly to Gemini Pro as an inline part!
-            response = model.generate_content(
+            # Pass PDF bytes directly to Gemini as an inline part using the new SDK!
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
                 contents=[
-                    {
-                        "mime_type": "application/pdf",
-                        "data": file_bytes
-                    },
+                    types.Part.from_bytes(
+                        data=file_bytes,
+                        mime_type="application/pdf"
+                    ),
                     prompt
                 ],
-                generation_config=genai.types.GenerateContentConfig(
+                config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1
                 )
@@ -470,11 +470,8 @@ def generate_image_endpoint(input_data: ImageGenerationInput):
                 "model_used": "Imagen 3 (Simulation Mode)"
             }
 
-        # Initialize the new google-genai SDK client
-        from google import genai
-        from google.genai import types
-        
-        client = genai.Client()
+        if not client:
+            raise HTTPException(status_code=500, detail="Google GenAI client is not initialized.")
         
         # Determine the model name
         model_name = input_data.model_name or "imagen-3.0-generate-002"
@@ -629,11 +626,8 @@ def generate_video_endpoint(input_data: VideoGenerationInput):
                 "model_used": "Veo 2.0 (Simulation Mode)"
             }
 
-        # Initialize the new google-genai SDK client
-        from google import genai
-        from google.genai import types
-        
-        client = genai.Client()
+        if not client:
+            raise HTTPException(status_code=500, detail="Google GenAI client is not initialized.")
         
         # Determine the model name
         model_name = input_data.model_name or "veo-2.0-generate-001"

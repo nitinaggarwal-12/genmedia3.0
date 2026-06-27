@@ -152,46 +152,49 @@ export function CampaignStudio() {
     { num: 5, label: "Review" }
   ];
 
-  // Compliance Violations Rules
-  const violationRules = [
-    {
-      word: "miracle cure",
-      rule: "FDA Rule 21 CFR 312.7: Promotion of investigational drugs. Do not represent as safe or effective. Avoid speculative superlatives.",
-    },
-    {
-      word: "guaranteed",
-      rule: "Merck Brand Guideline Section 4.2: Efficacy claims must be supported by double-blind clinical data. Avoid absolute claims.",
-    }
-  ];
-
-  // Scan copy for violations
-  const scanViolations = () => {
-    const found = [];
-    violationRules.forEach(r => {
-      const regex = new RegExp(`\\b${r.word}\\b`, "gi");
-      const matches = copyText.match(regex);
-      if (matches) {
-        found.push({
-          word: r.word,
-          rule: r.rule,
-          count: matches.length
-        });
-      }
-    });
-    return found;
-  };
-
-  const activeViolations = scanViolations();
-
-  // Calculate Compliance Score
-  const getComplianceScore = () => {
-    if (activeViolations.length === 2) return 78;
-    if (activeViolations.length === 1) return 89;
-    return 98;
-  };
-
-  const complianceScore = getComplianceScore();
+  const [complianceScore, setComplianceScore] = useState(98);
+  const [activeViolations, setActiveViolations] = useState<{ word: string; rule: string; count: number }[]>([]);
+  const [regulatoryReasoning, setRegulatoryReasoning] = useState(
+    "Excellent work. The copy contains no high-risk forbidden terms and is compliant with general clinical guidelines."
+  );
+  const [isScanning, setIsScanning] = useState(false);
   const isLocked = complianceScore < 90;
+
+  // Debounced Deep AI Compliance Scan
+  React.useEffect(() => {
+    if (!copyText.trim()) return;
+    
+    setIsScanning(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const data = await apiFetch("/api/scan", {
+          method: "POST",
+          body: JSON.stringify({ copy: copyText })
+        });
+        
+        const violations = Object.entries(data.matched_terms || {}).map(([word, rule]) => {
+          const regex = new RegExp(`\\b${word}\\b`, "gi");
+          const matches = copyText.match(regex);
+          return {
+            word,
+            rule: rule as string,
+            count: matches ? matches.length : 1
+          };
+        });
+        
+        setActiveViolations(violations);
+        setComplianceScore(data.compliance_score);
+        setRegulatoryReasoning(data.regulatory_reasoning);
+      } catch (err) {
+        console.error("Compliance scan failed:", err);
+      } finally {
+        setIsScanning(false);
+      }
+    }, 1500); // 1.5s debounce
+
+    return () => clearTimeout(delayDebounce);
+  }, [copyText]);
+
 
   // Render highlighted text for the Live Scan panel
   const renderHighlightedText = () => {
@@ -323,8 +326,15 @@ export function CampaignStudio() {
                   <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
                     <Sparkles className="text-blue-600" size={16} /> Marketing Copy Editor
                   </h3>
-                  <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    Real-time FDA Compliance Scanner
+                  <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                    {isScanning ? (
+                      <>
+                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-ping"></span>
+                        <span className="text-blue-600">Analyzing Copy...</span>
+                      </>
+                    ) : (
+                      <span>Real-time FDA Compliance Scanner</span>
+                    )}
                   </span>
                 </div>
 
@@ -497,7 +507,16 @@ export function CampaignStudio() {
                     ))
                   )}
                 </div>
+
+                {/* Deep AI Regulatory Reasoning */}
+                <div className="pt-4 border-t border-slate-100 space-y-1.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Deep AI Audit Notes</span>
+                  <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
+                    {regulatoryReasoning}
+                  </p>
+                </div>
               </div>
+
 
               {/* Slide Preview with Locked Overlay */}
               <div className="p-6 bg-white rounded-3xl border border-slate-200/60 shadow-sm space-y-4 relative overflow-hidden h-52 flex flex-col justify-between">
