@@ -11,46 +11,50 @@ import { DigitalAssetLibrary } from "@/pages/digital-asset-library";
 import { AdvancedAnalytics } from "@/pages/advanced-analytics";
 import { TeamGovernance } from "@/pages/team-governance";
 import { Settings } from "@/pages/settings";
+import { CampaignProvider } from "@/context/CampaignContext";
 
 export default function App() {
   return (
     <Router>
-      <Routes>
-        {/* Full-screen Login Route (Initial Screen) */}
-        <Route path="/" element={<SecureAccess />} />
+      <CampaignProvider>
+        <Routes>
+          {/* Full-screen Login Route (Initial Screen) */}
+          <Route path="/" element={<SecureAccess />} />
 
-        {/* Authenticated Routes with Sidebar & Header */}
-        <Route 
-          path="/*" 
-          element={
-            <div className="flex h-screen bg-slate-100 overflow-hidden">
-              {/* Sidebar */}
-              <Sidebar />
-              
-              {/* Main Content Area */}
-              <div className="flex flex-col flex-1 ml-64 min-w-0 h-full relative">
-                {/* Header */}
-                <Header />
+          {/* Authenticated Routes with Sidebar & Header */}
+          <Route 
+            path="/*" 
+            element={
+              <div className="flex h-screen bg-slate-100 overflow-hidden">
+                {/* Sidebar */}
+                <Sidebar />
                 
-                {/* Scrollable Page Wrapper */}
-                <main className="flex-1 overflow-y-auto pt-16">
-                  <Routes>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/campaigns" element={<Campaigns />} />
-                    <Route path="/campaign-studio" element={<CampaignStudio />} />
-                    <Route path="/regulatory-hub" element={<RegulatoryHub />} />
-                    <Route path="/audience-intelligence" element={<AudienceIntelligence />} />
-                    <Route path="/content-library" element={<DigitalAssetLibrary />} />
-                    <Route path="/analytics" element={<AdvancedAnalytics />} />
-                    <Route path="/team" element={<TeamGovernance />} />
-                    <Route path="/settings" element={<Settings />} />
-                  </Routes>
-                </main>
+                {/* Main Content Area */}
+                <div className="flex flex-col flex-1 ml-64 min-w-0 h-full relative">
+                  {/* Header */}
+                  <Header />
+                  
+                  {/* Scrollable Page Wrapper */}
+                  <main className="flex-1 overflow-y-auto pt-16">
+                    <Routes>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/campaigns" element={<Campaigns />} />
+                      <Route path="/campaign-studio" element={<CampaignStudio />} />
+                      <Route path="/regulatory-hub" element={<RegulatoryHub />} />
+                      <Route path="/audience-intelligence" element={<AudienceIntelligence />} />
+                      <Route path="/content-library" element={<DigitalAssetLibrary />} />
+                      <Route path="/analytics" element={<AdvancedAnalytics />} />
+                      <Route path="/team" element={<TeamGovernance />} />
+                      <Route path="/settings" element={<Settings />} />
+                    </Routes>
+                  </main>
+                </div>
               </div>
-            </div>
-          } 
-        />
-      </Routes>
+            } 
+          />
+        </Routes>
+      </CampaignProvider>
     </Router>
   );
 }
+

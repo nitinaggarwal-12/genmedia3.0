@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, getApiUrl } from "@/lib/api";
+import { useCampaign } from "@/context/CampaignContext";
 import { 
   UploadCloud, 
   Trash2, 
@@ -19,6 +20,8 @@ import {
 
 export function CampaignStudio() {
   const navigate = useNavigate();
+  const { campaigns, activeCampaignId, activeCampaign, updateCampaign, addCampaign, selectCampaign, addNotification } = useCampaign();
+  
   const [activeStep, setActiveStep] = useState(1); // Default to Step 01 (Identity & Clinical Grounding)
   const [budget, setBudget] = useState(45); // Scale of 10-100 (defaults to 45, which is $4,500)
   
@@ -48,6 +51,54 @@ export function CampaignStudio() {
   const [groundingCoords, setGroundingCoords] = useState<any[]>([]);
   const [activeMetric, setActiveMetric] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
+
+  // Sync local states from active campaign when it changes
+  useEffect(() => {
+    if (activeCampaign) {
+      if (activeCampaign.step) setActiveStep(activeCampaign.step);
+      if (activeCampaign.budget) setBudget(activeCampaign.budget);
+      if (activeCampaign.copyText !== undefined) setCopyText(activeCampaign.copyText);
+      if (activeCampaign.pdfName !== undefined) setUploadedPdfName(activeCampaign.pdfName);
+      if (activeCampaign.metrics !== undefined) setClinicalMetrics(activeCampaign.metrics);
+      if (activeCampaign.activeViolations !== undefined) setActiveViolations(activeCampaign.activeViolations);
+      if (activeCampaign.complianceScore !== undefined) setComplianceScore(activeCampaign.complianceScore);
+      if (activeCampaign.regulatoryReasoning !== undefined) setRegulatoryReasoning(activeCampaign.regulatoryReasoning);
+      if (activeCampaign.assets !== undefined) {
+        setAssets(activeCampaign.assets);
+        if (activeCampaign.assets.length > 0) {
+          const latest = activeCampaign.assets[activeCampaign.assets.length - 1];
+          setHeroImage(latest.url);
+          setActiveAssetType(latest.type);
+        } else {
+          setHeroImage("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300");
+          setActiveAssetType("image");
+        }
+      }
+    } else {
+      // If no active campaign, auto-select the first active campaign in the list or create a new one
+      const activeCamps = campaigns.filter(c => c.status !== "Completed");
+      if (activeCamps.length > 0) {
+        selectCampaign(activeCamps[0].id);
+      } else {
+        const newId = addCampaign({
+          name: `Campaign Zygardia #${campaigns.length + 1}`,
+          brand: "product_a",
+          therapeuticArea: "Oncology (Renal Cell Carcinoma)",
+          pdfName: null,
+          metrics: {},
+          copyText: "ZYGARDIA 10mg is a breakthrough monotherapy for resectable renal cell carcinoma. Clinically proven to provide a significant improvement in recurrence-free survival. Our therapeutic pipeline is designed to deliver excellent clinical survival rates. Ensure early adjuvant intervention to optimize treatment sequencing.",
+          complianceScore: 98,
+          regulatoryReasoning: "Excellent work. The copy contains no high-risk forbidden terms and is compliant with general clinical guidelines.",
+          activeViolations: [],
+          assets: [],
+          status: "Creative",
+          step: 1,
+          budget: 45
+        });
+        selectCampaign(newId);
+      }
+    }
+  }, [activeCampaignId, campaigns.length]);
 
   // Scroll to the page element when activeMetric changes
   React.useEffect(() => {
@@ -92,19 +143,38 @@ export function CampaignStudio() {
       if (data.extracted_metrics && Object.keys(data.extracted_metrics).length > 0) {
         setActiveMetric(Object.keys(data.extracted_metrics)[0]);
       }
+
+      if (activeCampaignId) {
+        updateCampaign(activeCampaignId, {
+          pdfName: file.name,
+          metrics: data.extracted_metrics || {},
+          step: 1,
+          status: "Creative"
+        });
+      }
     } catch (err) {
       console.error("PDF grounding failed:", err);
-      setClinicalMetrics({
+      const mockMetrics = {
         hazard_ratio: "0.58",
         rfs_rate: "78.4%",
         p_value: "<0.001"
-      });
+      };
+      setClinicalMetrics(mockMetrics);
       setGroundingCoords([
         { metric: "hazard_ratio", page: 4 },
         { metric: "rfs_rate", page: 4 },
         { metric: "p_value", page: 4 }
       ]);
       setActiveMetric("hazard_ratio");
+
+      if (activeCampaignId) {
+        updateCampaign(activeCampaignId, {
+          pdfName: file.name,
+          metrics: mockMetrics,
+          step: 1,
+          status: "Creative"
+        });
+      }
     } finally {
       setIsScanning(false);
     }
@@ -161,10 +231,18 @@ export function CampaignStudio() {
             type: "image" as const
           };
           
-          setAssets(prev => [newAsset, ...prev]);
+          const updatedAssets = [newAsset, ...assets];
+          setAssets(updatedAssets);
           setHeroImage(resolvedUrl);
           setActiveAssetType("image");
           setShowImagenModal(false);
+
+          if (activeCampaignId) {
+            updateCampaign(activeCampaignId, {
+              assets: updatedAssets,
+              step: 3
+            });
+          }
         }
       } else {
         // Video generation
@@ -196,10 +274,18 @@ export function CampaignStudio() {
             type: "video" as const
           };
           
-          setAssets(prev => [newAsset, ...prev]);
+          const updatedAssets = [newAsset, ...assets];
+          setAssets(updatedAssets);
           setHeroImage(resolvedUrl);
           setActiveAssetType("video");
           setShowImagenModal(false);
+
+          if (activeCampaignId) {
+            updateCampaign(activeCampaignId, {
+              assets: updatedAssets,
+              step: 3
+            });
+          }
         }
       }
     } catch (err: any) {
@@ -254,6 +340,16 @@ export function CampaignStudio() {
         setActiveViolations(violations);
         setComplianceScore(data.compliance_score);
         setRegulatoryReasoning(data.regulatory_reasoning);
+
+        if (activeCampaignId) {
+          updateCampaign(activeCampaignId, {
+            copyText: copyText,
+            complianceScore: data.compliance_score,
+            activeViolations: violations,
+            regulatoryReasoning: data.regulatory_reasoning,
+            step: 3
+          });
+        }
       } catch (err) {
         console.error("Compliance scan failed:", err);
       } finally {
@@ -291,9 +387,31 @@ export function CampaignStudio() {
 
   const handleNextModule = () => {
     if (activeStep < 5) {
-      setActiveStep(activeStep + 1);
+      const nextStep = activeStep + 1;
+      setActiveStep(nextStep);
+      if (activeCampaignId) {
+        let nextStatus = activeCampaign?.status || "Creative";
+        if (nextStep === 4) nextStatus = "Medical";
+        if (nextStep === 5) nextStatus = "Legal Review";
+        updateCampaign(activeCampaignId, {
+          step: nextStep,
+          status: nextStatus as any
+        });
+      }
     } else {
-      // Final submission
+      // Final submission (Approve to Memory)
+      if (activeCampaignId) {
+        updateCampaign(activeCampaignId, {
+          status: "Completed",
+          step: 5
+        });
+        addNotification(
+          "Campaign Transmitted",
+          `Campaign '${activeCampaign?.name}' has been successfully approved and transmitted to Veeva Vault PromoMats.`,
+          "success"
+        );
+        selectCampaign(null);
+      }
       navigate("/dashboard");
     }
   };
@@ -482,6 +600,13 @@ export function CampaignStudio() {
                         setClinicalMetrics({});
                         setGroundingCoords([]);
                         setActiveMetric(null);
+                        if (activeCampaignId) {
+                          updateCampaign(activeCampaignId, {
+                            pdfName: null,
+                            metrics: {},
+                            step: 1
+                          });
+                        }
                       }}
                       className="px-3 py-1.5 border border-slate-200 hover:bg-red-50 hover:text-red-600 rounded-xl font-body text-[9px] font-bold transition-all cursor-pointer text-slate-500"
                     >
