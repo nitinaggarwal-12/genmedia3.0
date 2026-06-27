@@ -14,7 +14,10 @@ import {
   Unlock,
   Sparkles,
   FileText,
-  FileDown
+  FileDown,
+  Eye,
+  Maximize2,
+  X
 } from "lucide-react";
 
 
@@ -35,6 +38,7 @@ export function CampaignStudio() {
   } = useCampaign();
   
   const [activeStep, setActiveStep] = useState(1); // Default to Step 01 (Identity & Clinical Grounding)
+  const [lightbox, setLightbox] = useState<{ type: "image" | "video" | "slide"; url?: string; title?: string } | null>(null);
   const [budget, setBudget] = useState(45); // Scale of 10-100 (defaults to 45, which is $4,500)
   
   // Creative Copy State
@@ -1048,7 +1052,13 @@ export function CampaignStudio() {
                         setActiveAssetType(asset.type);
                       }}
                     >
-                      <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50 relative">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightbox({ type: asset.type, url: asset.url, title: asset.name });
+                        }}
+                        className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50 relative cursor-zoom-in group/thumb"
+                      >
                         {asset.type === "video" ? (
                           <>
                             <video src={asset.url} className="w-full h-full object-cover" muted playsInline />
@@ -1059,6 +1069,9 @@ export function CampaignStudio() {
                         ) : (
                           <img alt={asset.name} className="w-full h-full object-cover" src={asset.url}/>
                         )}
+                        <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center text-white transition-opacity duration-200">
+                          <Eye size={16} />
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-display text-sm font-bold text-slate-800 truncate">{asset.name}</h4>
@@ -1183,9 +1196,18 @@ export function CampaignStudio() {
                 </div>
 
                 {/* Blurred Slide Mockup (Super Premium Split Layout!) */}
-                <div className={`flex gap-4 select-none w-full h-28 p-4 bg-slate-900 text-white rounded-2xl transition-all ${
-                  isLocked ? "filter blur-sm opacity-30" : "opacity-100"
-                }`}>
+                <div 
+                  onClick={() => {
+                    if (!isLocked) {
+                      setLightbox({ type: "slide", url: heroImage, title: activeCampaign?.name || "Slide Preview" });
+                    }
+                  }}
+                  className={`flex gap-4 select-none w-full h-28 p-4 bg-slate-900 text-white rounded-2xl transition-all relative group/slide ${
+                    isLocked 
+                      ? "filter blur-sm opacity-30" 
+                      : "opacity-100 cursor-zoom-in hover:scale-[1.02] hover:shadow-lg hover:shadow-slate-900/10"
+                  }`}
+                >
                   <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                     <span className="text-[8px] font-bold uppercase text-blue-400">Zygardia Adjuvant Presentation</span>
                     <h4 className="font-display font-bold text-[10px] leading-tight truncate">ZYGARDIA 10mg: Clinical Trial Results</h4>
@@ -1193,7 +1215,7 @@ export function CampaignStudio() {
                       {copyText}
                     </p>
                   </div>
-                  <div className="w-20 h-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700/50 shrink-0">
+                  <div className="w-20 h-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700/50 shrink-0 relative">
                     {activeAssetType === "video" ? (
                       <video 
                         src={heroImage} 
@@ -1207,6 +1229,14 @@ export function CampaignStudio() {
                       <img src={heroImage} className="w-full h-full object-cover" alt="Slide Visual" />
                     )}
                   </div>
+                  {!isLocked && (
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/slide:opacity-100 flex items-center justify-center text-white font-body text-[8px] font-bold uppercase tracking-wider transition-opacity duration-200 rounded-2xl">
+                      <span className="flex items-center gap-1 bg-slate-900/80 px-3 py-1.5 rounded-full border border-white/10 shadow-lg">
+                        <Maximize2 size={10} />
+                        Expand Slide
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Locked/Unlocked Overlay */}
@@ -1733,6 +1763,125 @@ export function CampaignStudio() {
         </div>
       )}
 
+      {/* Reusable Asset/Slide Lightbox Modal */}
+      {lightbox && (
+        <div 
+          className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-8 animate-fade-in"
+          onClick={() => setLightbox(null)}
+        >
+          {/* Close Button */}
+          <button 
+            onClick={() => setLightbox(null)}
+            className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer border border-white/10 shadow-lg"
+          >
+            <X size={20} />
+          </button>
+
+          {/* Modal Container */}
+          <div className="relative max-w-[95vw] max-h-[90vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            
+            {/* 1. Slide Lightbox */}
+            {lightbox.type === "slide" && (
+              <div className="w-[960px] h-[540px] bg-slate-900 text-white rounded-3xl p-10 flex gap-8 shadow-2xl border border-white/10 relative overflow-hidden aspect-video">
+                <div className="absolute -left-20 -top-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+                
+                {/* Left Column: Copy */}
+                <div className="flex-1 flex flex-col justify-between min-w-0">
+                  <div className="space-y-4">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">
+                      {activeCampaign?.name || "Zygardia Presentation"}
+                    </span>
+                    <h2 className="font-display font-black text-2xl leading-snug text-white">
+                      ZYGARDIA 10mg: Clinical Trial Results
+                    </h2>
+                    <p className="text-sm text-slate-300 leading-relaxed font-sans overflow-y-auto max-h-[320px] pr-2">
+                      {copyText}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-wider font-bold border-t border-white/5 pt-4">
+                    <span>Veeva Vault Sync Asset</span>
+                    <span>·</span>
+                    <span>Compliant (Score: {complianceScore})</span>
+                  </div>
+                </div>
+                
+                {/* Right Column: Visual */}
+                <div className="w-[400px] h-full rounded-2xl overflow-hidden bg-slate-950 border border-white/5 shadow-inner shrink-0 relative flex items-center justify-center">
+                  {activeAssetType === "video" ? (
+                    <video 
+                      src={lightbox.url} 
+                      className="w-full h-full object-cover" 
+                      autoPlay 
+                      loop 
+                      controls
+                      muted 
+                      playsInline 
+                    />
+                  ) : (
+                    <img src={lightbox.url} className="w-full h-full object-cover" alt="Slide Visual" />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Image Lightbox */}
+            {lightbox.type === "image" && (
+              <div className="flex flex-col items-center gap-4">
+                <img 
+                  src={lightbox.url} 
+                  className="max-w-[90vw] max-h-[80vh] rounded-3xl object-contain shadow-2xl border border-white/10" 
+                  alt={lightbox.title} 
+                />
+                <div className="flex items-center justify-between w-full px-4 text-white">
+                  <div>
+                    <h3 className="font-display font-bold text-base">{lightbox.title}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Clinical Simulation Asset</p>
+                  </div>
+                  <a 
+                    href={lightbox.url} 
+                    download={lightbox.title}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all cursor-pointer text-xs font-bold text-white"
+                  >
+                    <FileDown size={14} />
+                    <span>Open Original</span>
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Video Lightbox */}
+            {lightbox.type === "video" && (
+              <div className="flex flex-col items-center gap-4">
+                <video 
+                  src={lightbox.url} 
+                  className="max-w-[90vw] max-h-[80vh] rounded-3xl object-contain shadow-2xl border border-white/10" 
+                  controls 
+                  autoPlay 
+                  loop 
+                />
+                <div className="flex items-center justify-between w-full px-4 text-white">
+                  <div>
+                    <h3 className="font-display font-bold text-base">{lightbox.title}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Clinical Simulation Video</p>
+                  </div>
+                  <a 
+                    href={lightbox.url} 
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all cursor-pointer text-xs font-bold text-white"
+                  >
+                    <FileDown size={14} />
+                    <span>Open Original</span>
+                  </a>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
