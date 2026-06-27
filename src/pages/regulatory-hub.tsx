@@ -134,6 +134,23 @@ export function RegulatoryHub() {
     closeReviewDrawer();
   };
 
+  const handleRequestRevisions = () => {
+    if (!selectedSub) return;
+
+    updateCampaign(selectedSub.campaignId, {
+      status: "Creative",
+      step: 3
+    });
+
+    addNotification(
+      "Revisions Requested",
+      `Campaign '${selectedSub.name}' has been returned to Creative by the Regulatory Lead.`,
+      "warning"
+    );
+
+    closeReviewDrawer();
+  };
+
   // Claims spiderweb ontology graph coordinates (500x300 grid)
   const centerNode = { x: 240, y: 140 };
   const primaryNodes = [
@@ -555,10 +572,10 @@ export function RegulatoryHub() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <button 
-                      onClick={closeReviewDrawer}
+                      onClick={handleRequestRevisions}
                       className="py-3 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-body text-xs font-bold transition-colors cursor-pointer"
                     >
-                      Close Review
+                      Request Revisions
                     </button>
                     <button 
                       disabled={!allApproved || selectedSub.status === "At Risk"}

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, Verified, Check, History, Lock, Rocket, Bolt, Wifi, FileText, AlertTriangle, Sparkles } from "lucide-react";
+import { TrendingUp, Verified, Check, History, Lock, Rocket, Bolt, Wifi, FileText, AlertTriangle, Sparkles, Search } from "lucide-react";
 import { useCampaign } from "@/context/CampaignContext";
 
 const TimelineItem = ({ icon: Icon, label, status }) => {
@@ -21,6 +22,15 @@ const TimelineItem = ({ icon: Icon, label, status }) => {
 export function Dashboard() {
   const navigate = useNavigate();
   const { campaigns, selectCampaign } = useCampaign();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+
+  // Filter campaigns in real-time!
+  const filteredCampaigns = campaigns.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "All Statuses" || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // 1. Calculate Dynamic Metrics
   const totalBudget = campaigns.reduce((sum, c) => sum + c.budget, 0);
@@ -209,9 +219,36 @@ export function Dashboard() {
 
           {/* Active Campaigns Table Card (flex-1 min-h-0 flex flex-col) */}
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/50 flex flex-col flex-1 min-h-0">
-            <div className="mb-4 shrink-0">
-              <h2 className="font-display text-base font-bold text-slate-900">Active Campaigns</h2>
-              <p className="font-sans text-[10px] text-slate-400">Monitor and resume your marketing pipeline</p>
+            <div className="mb-4 shrink-0 flex justify-between items-center">
+              <div>
+                <h2 className="font-display text-base font-bold text-slate-900">Active Campaigns</h2>
+                <p className="font-sans text-[10px] text-slate-400">Monitor and resume your marketing pipeline</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Compact Local Search */}
+                <div className="flex items-center bg-slate-55/40 px-3 py-1 rounded-xl gap-1.5 border border-slate-200/40">
+                  <Search className="h-3 w-3 text-slate-400" />
+                  <input 
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="bg-transparent border-none outline-none font-sans text-[10px] text-slate-800 placeholder:text-slate-400 w-24"
+                  />
+                </div>
+                {/* Compact Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-slate-55/40 border border-slate-200/40 px-2.5 py-1 rounded-xl font-sans text-[10px] text-slate-700 cursor-pointer outline-none"
+                >
+                  <option>All Statuses</option>
+                  <option>Creative</option>
+                  <option>Medical</option>
+                  <option>Legal Review</option>
+                  <option>Completed</option>
+                </select>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto min-h-0 pr-1">
               <table className="w-full text-left border-collapse">
@@ -225,7 +262,7 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {campaigns.map((c) => (
+                  {filteredCampaigns.map((c) => (
                     <tr key={c.id} className="text-xs text-slate-700 group hover:bg-slate-50/40 transition-colors">
                       <td className="py-3.5 font-bold text-slate-800">{c.name}</td>
                       <td className="py-3.5 capitalize">{c.brand.replace("_", " ")}</td>
@@ -239,7 +276,13 @@ export function Dashboard() {
                         </span>
                       </td>
                       <td className="py-3.5">
-                        <span className="font-body text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        <span className={`font-body text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                          c.status === "Completed"
+                            ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                            : c.status === "Legal Review"
+                            ? "bg-amber-50 text-amber-600 border border-amber-100"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}>
                           {c.status}
                         </span>
                       </td>

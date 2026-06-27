@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   FileDown, 
@@ -12,6 +13,7 @@ import {
   Bolt, 
   ShieldCheck, 
   Trash2,
+  Search,
   ChevronRight as ChevronRightIcon 
 } from "lucide-react";
 import { useCampaign } from "@/context/CampaignContext";
@@ -105,12 +107,27 @@ const CampaignRow = ({ campaign }) => {
 
 export function Campaigns() {
   const navigate = useNavigate();
-  const { campaigns, selectCampaign, addCampaign } = useCampaign();
+  const { campaigns, selectCampaign, deleteCampaign } = useCampaign();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [brandFilter, setBrandFilter] = useState("All Brands");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
 
   const handleCreateNew = () => {
     selectCampaign(null); // Clear active draft
     navigate("/campaign-studio");
   };
+
+  // Filter campaigns in real-time!
+  const filteredCampaigns = campaigns.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Brand filter mapping
+    const mappedBrand = brandFilter === "Product A (Zygardia)" ? "product_a" : brandFilter === "Product B" ? "product_b" : "All Brands";
+    const matchesBrand = brandFilter === "All Brands" || c.brand === mappedBrand;
+    
+    const matchesStatus = statusFilter === "All Statuses" || c.status === statusFilter;
+    return matchesSearch && matchesBrand && matchesStatus;
+  });
 
   // Calculate MLR compliance stats for the sidebar
   const totalCampaigns = campaigns.length;
@@ -158,12 +175,20 @@ export function Campaigns() {
                 <Filter className="h-4 w-4 text-slate-400" />
                 <span className="font-body font-bold text-xs text-slate-600">Filters:</span>
                 <div className="h-4 w-[1px] bg-slate-200/70 mx-2"></div>
-                <select className="bg-transparent border-none outline-none font-sans text-xs text-slate-850 cursor-pointer">
+                <select 
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  className="bg-transparent border-none outline-none font-sans text-xs text-slate-850 cursor-pointer"
+                >
                   <option>All Brands</option>
                   <option>Product A (Zygardia)</option>
                   <option>Product B</option>
                 </select>
-                <select className="bg-transparent border-none outline-none font-sans text-xs text-slate-850 cursor-pointer">
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent border-none outline-none font-sans text-xs text-slate-850 cursor-pointer"
+                >
                   <option>All Statuses</option>
                   <option>Creative</option>
                   <option>Medical</option>
@@ -171,10 +196,22 @@ export function Campaigns() {
                   <option>Completed</option>
                 </select>
               </div>
+              
+              {/* Local Search Input */}
+              <div className="flex items-center bg-white shadow-sm px-4 py-1.5 rounded-xl gap-2 border border-slate-200/40 ml-2">
+                <Search className="h-3.5 w-3.5 text-slate-400" />
+                <input 
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search campaigns..."
+                  className="bg-transparent border-none outline-none font-sans text-[11px] text-slate-800 placeholder:text-slate-400 w-36"
+                />
+              </div>
             </div>
             <div className="flex items-center gap-4 px-4">
               <span className="font-body text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                {totalCampaigns} Record{totalCampaigns !== 1 ? "s" : ""} found
+                {filteredCampaigns.length} Record{filteredCampaigns.length !== 1 ? "s" : ""} found
               </span>
             </div>
           </div>
@@ -194,13 +231,13 @@ export function Campaigns() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/70">
-                  {campaigns.map(campaign => <CampaignRow key={campaign.id} campaign={campaign} />)}
+                  {filteredCampaigns.map(campaign => <CampaignRow key={campaign.id} campaign={campaign} />)}
                 </tbody>
               </table>
             </div>
             {/* Pagination Footer (shrink-0) */}
             <div className="px-6 py-3 flex items-center justify-between bg-slate-50/30 border-t border-slate-100 shrink-0">
-              <span className="font-sans text-xs text-slate-500">Showing 1-{totalCampaigns} of {totalCampaigns}</span>
+              <span className="font-sans text-xs text-slate-500">Showing 1-{filteredCampaigns.length} of {filteredCampaigns.length}</span>
               <div className="flex gap-1">
                 <button className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
                   <ChevronLeft className="h-4 w-4 text-slate-500" />

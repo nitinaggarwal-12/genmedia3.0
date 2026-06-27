@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
@@ -14,6 +15,8 @@ import { Settings } from "@/pages/settings";
 import { CampaignProvider } from "@/context/CampaignContext";
 
 export default function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
     <Router>
       <CampaignProvider>
@@ -25,14 +28,14 @@ export default function App() {
           <Route 
             path="/*" 
             element={
-              <div className="flex h-screen bg-slate-100 overflow-hidden">
+              <div className="flex h-screen bg-slate-105 overflow-hidden">
                 {/* Sidebar */}
-                <Sidebar />
+                <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
                 
                 {/* Main Content Area */}
-                <div className="flex flex-col flex-1 ml-64 min-w-0 h-full relative">
+                <div className={`flex flex-col flex-1 ${sidebarCollapsed ? 'ml-20' : 'ml-64'} min-w-0 h-full relative transition-all duration-300`}>
                   {/* Header */}
-                  <Header />
+                  <Header sidebarCollapsed={sidebarCollapsed} />
                   
                   {/* Viewport-locked Page Wrapper */}
                   <main className="flex-1 overflow-hidden pt-16 h-full flex flex-col">
