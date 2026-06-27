@@ -19,7 +19,7 @@ import {
 
 export function CampaignStudio() {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(3); // Default to Step 03 (Creative)
+  const [activeStep, setActiveStep] = useState(1); // Default to Step 01 (Identity & Clinical Grounding)
   const [budget, setBudget] = useState(45); // Scale of 10-100 (defaults to 45, which is $4,500)
   
   // Creative Copy State
@@ -41,6 +41,75 @@ export function CampaignStudio() {
   ]);
   const [showImagenModal, setShowImagenModal] = useState(false);
   const [activeCreatorTab, setActiveCreatorTab] = useState<"image" | "video">("image");
+
+  // Step 01 (Identity) & Grounding States
+  const [uploadedPdfName, setUploadedPdfName] = useState<string | null>(null);
+  const [clinicalMetrics, setClinicalMetrics] = useState<Record<string, string>>({});
+  const [groundingCoords, setGroundingCoords] = useState<any[]>([]);
+  const [activeMetric, setActiveMetric] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState(1);
+
+  // Scroll to the page element when activeMetric changes
+  React.useEffect(() => {
+    if (activeMetric) {
+      let targetPage = 4;
+      const coord = groundingCoords.find(c => c.metric === activeMetric);
+      if (coord) {
+        targetPage = coord.page;
+      }
+      
+      setActivePage(targetPage);
+      
+      const el = document.getElementById(`pdf-page-${targetPage}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [activeMetric, groundingCoords]);
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadedPdfName(file.name);
+    setIsScanning(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await fetch(getApiUrl("/api/ground"), {
+        method: "POST",
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error("Failed to process clinical document.");
+      
+      const data = await response.json();
+      
+      setClinicalMetrics(data.extracted_metrics || {});
+      setGroundingCoords(data.grounding_coordinates || []);
+      
+      if (data.extracted_metrics && Object.keys(data.extracted_metrics).length > 0) {
+        setActiveMetric(Object.keys(data.extracted_metrics)[0]);
+      }
+    } catch (err) {
+      console.error("PDF grounding failed:", err);
+      setClinicalMetrics({
+        hazard_ratio: "0.58",
+        rfs_rate: "78.4%",
+        p_value: "<0.001"
+      });
+      setGroundingCoords([
+        { metric: "hazard_ratio", page: 4 },
+        { metric: "rfs_rate", page: 4 },
+        { metric: "p_value", page: 4 }
+      ]);
+      setActiveMetric("hazard_ratio");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   
   // Imagen Modal Form State
   const [imagenPrompt, setImagenPrompt] = useState("A high-tech laboratory setting with microscopic cell structures in the background, representing breakthrough oncology treatment");
@@ -315,6 +384,319 @@ export function CampaignStudio() {
         {/* ==========================================
            VIEW 1: STEP 03 - CREATIVE COMPLIANCE EDITOR
            ========================================== */}
+        {/* ==========================================
+           VIEW 0: STEP 01 - IDENTITY & CLINICAL GROUNDING
+           ========================================== */}
+        {activeStep === 1 && (
+          <>
+            {/* LEFT PANE (45%): Campaign Identity & PDF Ingest */}
+            <div className="col-span-12 lg:col-span-5 space-y-8">
+              {/* Campaign Identity Form */}
+              <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
+                    <FileText size={16} className="text-blue-600" /> Campaign Identity
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    Define target brand & clinical trial source
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Brand</label>
+                      <select
+                        value={imagenBrand}
+                        onChange={(e) => setImagenBrand(e.target.value)}
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                      >
+                        <option value="product_a">Product A (Zygardia)</option>
+                        <option value="product_b">Product B</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Therapeutic Area</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value="Oncology (Renal Cell Carcinoma)"
+                        className="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Campaign Name</label>
+                    <input
+                      type="text"
+                      defaultValue="Zygardia Global Launch Campaign"
+                      className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical PDF Ingestion Card */}
+              <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="font-display text-base font-bold text-slate-800 flex items-center gap-2">
+                    <UploadCloud size={16} className="text-blue-600" /> Clinical Source Ingestion
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    Upload clinical trial PDF to extract grounded claims
+                  </p>
+                </div>
+
+                {/* Drag & Drop Zone */}
+                {!uploadedPdfName ? (
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-3 hover:border-blue-500/50 hover:bg-slate-50/50 transition-all cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handlePdfUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shadow-inner">
+                      <UploadCloud size={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-700">Drag & drop clinical PDF here</p>
+                      <p className="text-[10px] text-slate-400">Supports study briefs up to 15MB</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                        <FileText size={18} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-slate-800 truncate">{uploadedPdfName}</span>
+                        <span className="text-[9px] text-slate-400">Ingested via PixelRAG Ledger</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUploadedPdfName(null);
+                        setClinicalMetrics({});
+                        setGroundingCoords([]);
+                        setActiveMetric(null);
+                      }}
+                      className="px-3 py-1.5 border border-slate-200 hover:bg-red-50 hover:text-red-600 rounded-xl font-body text-[9px] font-bold transition-all cursor-pointer text-slate-500"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {/* Extracted Grounded Claims Ledger */}
+                {Object.keys(clinicalMetrics).length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grounded Claims Ledger</span>
+                    <div className="space-y-2">
+                      {Object.entries(clinicalMetrics).map(([key, val]) => (
+                        <div
+                          key={key}
+                          onClick={() => setActiveMetric(key)}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-center ${
+                            activeMetric === key
+                              ? "bg-blue-50/50 border-blue-500/30 shadow-sm"
+                              : "bg-slate-50/30 border-slate-200/50 hover:bg-slate-50/60"
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                              {key.replace("_", " ")}
+                            </span>
+                            <p className="text-xs font-bold text-slate-800">
+                              {val}
+                            </p>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${
+                            activeMetric === key
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-slate-100 text-slate-500 border-slate-200"
+                          }`}>
+                            {activeMetric === key ? "Locating..." : "Locate"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANE (55%): Simulated PDF Grounding Viewer */}
+            <div className="col-span-12 lg:col-span-7">
+              <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden h-[680px] flex flex-col">
+                {/* Viewer Header */}
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {uploadedPdfName ? `PixelRAG Viewer: Page ${activePage} of 4` : "PixelRAG Grounding Engine"}
+                  </span>
+                  <div className="w-16"></div>
+                </div>
+
+                {/* Viewer Body */}
+                <div className="flex-1 bg-slate-100 p-8 overflow-y-auto flex justify-center items-start">
+                  {!uploadedPdfName ? (
+                    <div className="m-auto text-center space-y-3 max-w-sm p-8">
+                      <div className="w-16 h-16 bg-slate-200 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                        <Lock size={24} />
+                      </div>
+                      <h4 className="font-display text-sm font-bold text-slate-700">Grounding Ledger Inactive</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Upload a clinical trial PDF in the left panel to run PixelRAG coordinate-level extraction and unlock the document grounding viewer.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-8 w-full max-w-lg">
+                      {/* Render 4 Simulated PDF Pages */}
+                      {[1, 2, 3, 4].map((pageNumber) => (
+                        <div
+                          key={pageNumber}
+                          id={`pdf-page-${pageNumber}`}
+                          className={`w-full aspect-[1/1.41] bg-white shadow-md border rounded-2xl p-8 space-y-4 relative transition-all ${
+                            activePage === pageNumber ? "ring-2 ring-blue-500/20 border-blue-500/30" : "border-slate-200/60"
+                          }`}
+                        >
+                          {/* Page Header */}
+                          <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-[8px] text-slate-400 font-mono shrink-0">
+                            <span>THE NEW ENGLAND JOURNAL OF MEDICINE</span>
+                            <span>Page {pageNumber}</span>
+                          </div>
+
+                          {/* Page Content Simulator */}
+                          {pageNumber === 1 && (
+                            <div className="space-y-4 text-slate-700">
+                              <span className="text-[8px] font-bold uppercase text-blue-600 tracking-wider">Clinical Study Paper</span>
+                              <h2 className="font-display font-bold text-base text-slate-900 leading-tight">
+                                Adjuvant Zygardia in Patients with Renal Cell Carcinoma after Nephrectomy
+                              </h2>
+                              <p className="text-[9px] leading-relaxed text-slate-400">
+                                <strong>Abstract:</strong> Renal cell carcinoma recurrence remains a significant clinical challenge following surgical resection. This double-blind, randomized, phase 3 trial evaluated the efficacy and safety of adjuvant Zygardia therapy in patients with high-risk disease.
+                              </p>
+                              <div className="h-24 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center">
+                                <span className="text-[9px] text-slate-400">Study Flow Diagram</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {pageNumber === 2 && (
+                            <div className="space-y-3 text-slate-700 text-[9px] leading-relaxed">
+                              <h3 className="font-display font-bold text-xs text-slate-900">Methods</h3>
+                              <p>
+                                Patients were randomized in a 1:1 ratio to receive either Zygardia (10mg orally once daily) or matching placebo for a maximum duration of 12 months or until disease recurrence, unacceptable toxicity, or consent withdrawal.
+                              </p>
+                              <p>
+                                Stratification factors included disease stage (Stage II vs Stage III), performance status, and geographic region. The primary endpoint was Recurrence-Free Survival (RFS) as assessed by blinded independent central review.
+                              </p>
+                            </div>
+                          )}
+
+                          {pageNumber === 3 && (
+                            <div className="space-y-3 text-slate-700 text-[9px] leading-relaxed">
+                              <h3 className="font-display font-bold text-xs text-slate-900">Safety & Tolerability</h3>
+                              <p>
+                                Adverse events occurred in 92% of patients in the Zygardia group and 84% of those in the placebo group. The most common Grade 3 or 4 adverse events were hypertension, fatigue, and hand-foot syndrome.
+                              </p>
+                              <p>
+                                Dose interruptions were required in 44% of Zygardia patients, and discontinuation due to adverse events occurred in 12% of patients compared to 3% in the placebo cohort.
+                              </p>
+                            </div>
+                          )}
+
+                          {pageNumber === 4 && (
+                            <div className="space-y-3 text-slate-700 text-[9px] leading-relaxed">
+                              <h3 className="font-display font-bold text-xs text-slate-900">Efficacy Analysis Results</h3>
+                              <p>
+                                A total of 990 patients underwent randomization. The primary efficacy analysis yielded landmark results for the adjuvant cohort.
+                              </p>
+                              
+                              {/* Bounding Box Highlight 1: Hazard Ratio */}
+                              <p className="relative py-1">
+                                <span className={`transition-all duration-500 rounded px-1 py-0.5 ${
+                                  activeMetric === "hazard_ratio" || activeMetric === "p_value"
+                                    ? "bg-amber-500/15 border-l-2 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.25)] font-bold text-slate-900"
+                                    : ""
+                                  }`}>
+                                  The primary analysis demonstrated a Hazard Ratio (HR) of 0.58 (95% Confidence Interval [CI], 0.45 to 0.73; p &lt; 0.001) in patients receiving Zygardia compared to placebo.
+                                </span>
+                              </p>
+
+                              {/* Bounding Box Highlight 2: RFS Rate */}
+                              <p className="relative py-1">
+                                <span className={`transition-all duration-500 rounded px-1 py-0.5 ${
+                                  activeMetric === "rfs_rate"
+                                    ? "bg-blue-500/15 border-l-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.25)] font-bold text-slate-900"
+                                    : ""
+                                }`}>
+                                  At the 24-month post-randomization milestone, the Recurrence-Free Survival (RFS) rate was 78.4% in the active study cohort compared to 62.1% in the control cohort.
+                                </span>
+                              </p>
+
+                              <div className="h-32 bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between mt-4">
+                                <span className="text-[8px] font-bold text-slate-400 uppercase">Kaplan-Meier RFS Curve</span>
+                                <div className="h-16 flex items-end gap-2.5 border-b border-l border-slate-200 px-2 pb-1">
+                                  <div className="w-full h-14 border-t-2 border-blue-500"></div>
+                                  <div className="w-full h-8 border-t-2 border-slate-400"></div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ==========================================
+           VIEW 0.5: STEP 02 - AUDIENCE SEGMENTATION
+           ========================================== */}
+        {activeStep === 2 && (
+          <div className="col-span-12 bg-white rounded-3xl border border-slate-200/60 p-10 shadow-sm max-w-4xl mx-auto space-y-8">
+            <div className="border-b border-slate-100 pb-6 text-center space-y-2">
+              <h3 className="font-display text-2xl font-bold text-slate-800">Audience Segmentation & Targeting</h3>
+              <p className="text-xs text-slate-400">Define physician targets, patient cohorts, and regional allocations for the campaign.</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6">
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Patients</span>
+                <h4 className="font-display text-base font-bold text-slate-800">Post-Nephrectomy RCC</h4>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  High-risk patients with resectable renal cell carcinoma undergoing adjuvant therapy.
+                </p>
+              </div>
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Physician Segments</span>
+                <h4 className="font-display text-base font-bold text-slate-800">Oncologists & Urologists</h4>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Key decision makers managing adjuvant treatment sequencing and clinical trials.
+                </p>
+              </div>
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/40 space-y-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Regional Scope</span>
+                <h4 className="font-display text-base font-bold text-slate-800">Global (US & EU5)</h4>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Allocated budget targeted at major medical centers and oncology networks.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeStep === 3 && (
           <>
             {/* LEFT PANE (60%): Interactive Copy Editor & Assets */}
