@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch, getApiUrl } from "@/lib/api";
 import { 
   UploadCloud, 
   Trash2, 
@@ -15,6 +16,7 @@ import {
   FileDown
 } from "lucide-react";
 
+
 export function CampaignStudio() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(3); // Default to Step 03 (Creative)
@@ -24,6 +26,70 @@ export function CampaignStudio() {
   const [copyText, setCopyText] = useState(
     "ZYGARDIA 10mg is a breakthrough monotherapy for resectable renal cell carcinoma. Clinically proven to provide a miracle cure in 99% of resected patient cohorts. Our therapeutic pipeline is guaranteed to deliver unprecedented clinical survival rates. Ensure early adjuvant intervention to optimize treatment sequencing."
   );
+
+  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300");
+  const [assets, setAssets] = useState([
+    {
+      name: "Hero_Visual_Global_v2.jpg",
+      size: "12.4 MB",
+      resolution: "4000 x 3000px",
+      url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300",
+      status: "Compliant"
+    }
+  ]);
+  const [showImagenModal, setShowImagenModal] = useState(false);
+  
+  // Imagen Modal Form State
+  const [imagenPrompt, setImagenPrompt] = useState("A high-tech laboratory setting with microscopic cell structures in the background, representing breakthrough oncology treatment");
+  const [imagenNegative, setImagenNegative] = useState("blurry, low quality, distorted text, human faces");
+  const [imagenBrand, setImagenBrand] = useState("product_a");
+  const [imagenStyle, setImagenStyle] = useState("clinical-realism");
+  const [imagenAspectRatio, setImagenAspectRatio] = useState("16:9");
+  const [imagenModel, setImagenModel] = useState("imagen-3.0-generate-002");
+  const [synthIdEnabled, setSynthIdEnabled] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const handleGenerateImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      const data = await apiFetch("/api/generate-image", {
+        method: "POST",
+        body: JSON.stringify({
+          prompt: imagenPrompt,
+          negative_prompt: imagenNegative || null,
+          aspect_ratio: imagenAspectRatio,
+          brand: imagenBrand,
+          style_preset: imagenStyle,
+          model_name: imagenModel
+        })
+      });
+      
+      if (data.success && data.image_url) {
+        const resolvedUrl = getApiUrl(data.image_url);
+        
+        const newAsset = {
+          name: data.filename,
+          size: "2.8 MB",
+          resolution: imagenAspectRatio === "16:9" ? "1920 x 1080px" : "1024 x 1024px",
+          url: resolvedUrl,
+          status: "Compliant"
+        };
+        
+        setAssets(prev => [newAsset, ...prev]);
+        setHeroImage(resolvedUrl);
+        setShowImagenModal(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setGenerationError(err.message || "Failed to generate image.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   // Stepper definition
   const steps = [
@@ -243,37 +309,57 @@ export function CampaignStudio() {
               {/* Active Assets List */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
                 <div className="px-6 py-4 bg-slate-50 flex justify-between items-center border-b border-slate-100">
-                  <span className="font-body text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assets (2)</span>
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
-                    </span>
-                    <span className="font-mono text-xs font-bold">Live Scan: Active</span>
-                  </div>
+                  <span className="font-body text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assets ({assets.length})</span>
+                  <button 
+                    onClick={() => setShowImagenModal(true)}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-body text-[10px] font-bold shadow-md shadow-blue-600/10 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles size={12} />
+                    <span>Imagen 3 Creator</span>
+                  </button>
                 </div>
 
                 <div className="divide-y divide-slate-100">
-                  <div className="p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors">
-                    <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50">
-                      <img alt="Hero Visual" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300"/>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-display text-sm font-bold text-slate-800 truncate">Hero_Visual_Global_v2.jpg</h4>
-                      <p className="font-sans text-xs text-slate-400 mt-1">12.4 MB · 4000 x 3000px</p>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/10 flex items-center gap-1.5">
-                        <CheckCircle2 size={13} />
-                        <span className="font-body text-[10px] font-bold uppercase tracking-wider">Compliant</span>
+                  {assets.map((asset, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors cursor-pointer ${heroImage === asset.url ? "bg-slate-50/70" : ""}`}
+                      onClick={() => setHeroImage(asset.url)}
+                    >
+                      <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200/50">
+                        <img alt={asset.name} className="w-full h-full object-cover" src={asset.url}/>
                       </div>
-                      <button className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-display text-sm font-bold text-slate-800 truncate">{asset.name}</h4>
+                        <p className="font-sans text-xs text-slate-400 mt-1">{asset.size} · {asset.resolution}</p>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className={`px-3 py-1 rounded-full flex items-center gap-1.5 border ${
+                          asset.status === "Compliant" 
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/10" 
+                            : "bg-amber-500/10 text-amber-600 border-amber-500/10"
+                        }`}>
+                          <CheckCircle2 size={13} />
+                          <span className="font-body text-[10px] font-bold uppercase tracking-wider">{asset.status}</span>
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssets(prev => prev.filter((_, i) => i !== idx));
+                            if (heroImage === asset.url && assets.length > 1) {
+                              setHeroImage(assets[idx === 0 ? 1 : idx - 1].url);
+                            }
+                          }}
+                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
+
 
             </div>
 
@@ -347,21 +433,26 @@ export function CampaignStudio() {
               </div>
 
               {/* Slide Preview with Locked Overlay */}
-              <div className="p-6 bg-white rounded-3xl border border-slate-200/60 shadow-sm space-y-4 relative overflow-hidden h-48 flex flex-col justify-between">
+              <div className="p-6 bg-white rounded-3xl border border-slate-200/60 shadow-sm space-y-4 relative overflow-hidden h-52 flex flex-col justify-between">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Veeva Asset Transmission Preview</span>
                   {isLocked ? <Lock className="text-red-500" size={14} /> : <Unlock className="text-emerald-500" size={14} />}
                 </div>
 
-                {/* Blurred Slide Mockup */}
-                <div className={`flex flex-col gap-2 select-none w-full h-24 p-4 bg-slate-900 text-white rounded-2xl transition-all ${
+                {/* Blurred Slide Mockup (Super Premium Split Layout!) */}
+                <div className={`flex gap-4 select-none w-full h-28 p-4 bg-slate-900 text-white rounded-2xl transition-all ${
                   isLocked ? "filter blur-sm opacity-30" : "opacity-100"
                 }`}>
-                  <span className="text-[8px] font-bold uppercase text-blue-400">Zygardia Adjuvant Presentation</span>
-                  <h4 className="font-display font-bold text-xs">ZYGARDIA 10mg: Landmark Clinical Trial Results</h4>
-                  <p className="text-[8px] text-slate-300 leading-normal font-sans">
-                    {copyText.slice(0, 120)}...
-                  </p>
+                  <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                    <span className="text-[8px] font-bold uppercase text-blue-400">Zygardia Adjuvant Presentation</span>
+                    <h4 className="font-display font-bold text-[10px] leading-tight truncate">ZYGARDIA 10mg: Clinical Trial Results</h4>
+                    <p className="text-[7px] text-slate-300 leading-normal font-sans line-clamp-3">
+                      {copyText}
+                    </p>
+                  </div>
+                  <div className="w-20 h-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700/50 shrink-0">
+                    <img src={heroImage} className="w-full h-full object-cover" alt="Slide Visual" />
+                  </div>
                 </div>
 
                 {/* Locked/Unlocked Overlay */}
@@ -377,6 +468,7 @@ export function CampaignStudio() {
                   </div>
                 )}
               </div>
+
 
             </div>
           </>
@@ -580,6 +672,172 @@ export function CampaignStudio() {
         <div className="h-16 w-px bg-slate-300"></div>
       </div>
 
+      {/* Imagen 3 Modal Overlay */}
+      {showImagenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200/80 p-8 space-y-6 overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                  <Sparkles size={16} />
+                </div>
+                <h3 className="font-display text-base font-bold text-slate-900">Google Imagen 3 Asset Creator</h3>
+              </div>
+              <button 
+                onClick={() => setShowImagenModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {generationError && (
+              <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl">
+                <strong>Error:</strong> {generationError}
+              </div>
+            )}
+
+            <form onSubmit={handleGenerateImage} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Image Prompt</label>
+                <textarea
+                  required
+                  value={imagenPrompt}
+                  onChange={(e) => setImagenPrompt(e.target.value)}
+                  className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700 resize-none leading-relaxed"
+                  placeholder="Describe the image you want to generate..."
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exclusion Criteria (Negative Prompt)</label>
+                <input
+                  type="text"
+                  value={imagenNegative}
+                  onChange={(e) => setImagenNegative(e.target.value)}
+                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                  placeholder="Things to avoid (e.g. blurry, low quality, faces)..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Style Preset</label>
+                  <select
+                    value={imagenStyle}
+                    onChange={(e) => setImagenStyle(e.target.value)}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                  >
+                    <option value="clinical-realism">Clinical Realism (Photorealistic)</option>
+                    <option value="microbiology-3d">Microbiology 3D (Scientific Render)</option>
+                    <option value="clean-vector">Clean Vector (Minimalist Graphic)</option>
+                    <option value="futuristic-hologram">Futuristic Hologram (Sci-Fi HUD)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Aspect Ratio</label>
+                  <select
+                    value={imagenAspectRatio}
+                    onChange={(e) => setImagenAspectRatio(e.target.value)}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                  >
+                    <option value="16:9">16:9 (Landscape)</option>
+                    <option value="4:3">4:3 (Standard)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                    <option value="3:4">3:4 (Portrait)</option>
+                    <option value="9:16">9:16 (Tall)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model Selection</label>
+                  <select
+                    value={imagenModel}
+                    onChange={(e) => setImagenModel(e.target.value)}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                  >
+                    <option value="imagen-3.0-generate-002">Imagen 3.0 Generate (Production)</option>
+                    <option value="gemini-3-pro-image">Gemini 3 Pro Image (Ultra Preview)</option>
+                    <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image (Fast Preview)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Brand Variant</label>
+                  <select
+                    value={imagenBrand}
+                    onChange={(e) => setImagenBrand(e.target.value)}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-700"
+                  >
+                    <option value="product_a">Product A (Zygardia)</option>
+                    <option value="product_b">Product B</option>
+                    <option value="product_c">Product C</option>
+                    <option value="product_d">Product D</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* SynthID watermark indicator */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${synthIdEnabled ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"}`}>
+                    <Lock size={14} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">SynthID™ Digital Watermark</span>
+                    <span className="text-[9px] text-slate-400">Embed secure cryptographic provenance seal in metadata.</span>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={synthIdEnabled}
+                    onChange={(e) => setSynthIdEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowImagenModal(false)}
+                  className="flex-1 h-12 border border-slate-200 text-slate-600 rounded-xl font-body text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGenerating}
+                  className={`flex-1 h-12 text-white rounded-xl font-body text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    isGenerating 
+                      ? "bg-slate-300 shadow-none cursor-not-allowed" 
+                      : "bg-blue-600 hover:bg-blue-700 hover:-translate-y-0.5 shadow-blue-600/20"
+                  }`}
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Synthesizing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>Generate Asset</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

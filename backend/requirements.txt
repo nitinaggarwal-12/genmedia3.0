@@ -2,8 +2,11 @@ fastapi>=0.115.0
 uvicorn>=0.31.0
 pydantic>=2.10.0
 google-generativeai>=0.8.0
+google-genai>=1.0.0
+pillow>=10.0.0
 pdfplumber>=0.11.0
 pypdf>=4.2.0
 python-multipart>=0.0.12
 pytest>=8.3.0
 httpx>=0.28.0
+
