@@ -1,0 +1,48 @@
+make this real world pharma customer ready without any gap or dependency on adobe or aws or any other tool
+
+
+## Prototype Navigation Spec
+
+### Screens
+1. Secure Access — Initial Screen
+2. Audience Intelligence
+3. Digital Asset Library
+4. Advanced Analytics
+5. Campaign Studio
+6. Campaign Management
+7. MLR Regulatory Hub
+8. Executive Dashboard
+9. Team Governance
+10. Platform Configuration
+
+### Navigation Flow
+- MLR Regulatory Hub:
+  - Element (xpath: `//button[contains(text(), 'Review')]`) → Campaign Studio (push transition)
+- Digital Asset Library:
+  - Element (xpath: `//a[@data-path='audience-intelligence']`) → Audience Intelligence (none transition)
+  - Element (xpath: `//button[contains(text(), 'Review Queue')]`) → MLR Regulatory Hub (push transition)
+- Team Governance:
+  - Element (xpath: `//a[@data-path='settings']`) → Platform Configuration (none transition)
+- Secure Access:
+  - Element (xpath: `//button[contains(text(), 'Continue to Platform')]`) → Executive Dashboard (push transition)
+  - Element (xpath: `//button[contains(text(), 'Verify & Authenticate')]`) → Executive Dashboard (push transition)
+- Campaign Management:
+  - Element (xpath: `//button[contains(text(), 'New Campaign')]`) → Campaign Studio (slide_up transition)
+  - Element (xpath: `//button[@title='Analytics']`) → Advanced Analytics (push transition)
+- Audience Intelligence:
+  - Element (xpath: `//a[@data-path='dashboard']`) → Executive Dashboard (none transition)
+  - Element (xpath: `//a[@data-path='campaign-builder']`) → Campaign Management (none transition)
+  - Element (xpath: `//a[@data-path='regulatory-hub']`) → MLR Regulatory Hub (none transition)
+  - Element (xpath: `//a[@data-path='content-library']`) → Digital Asset Library (none transition)
+  - Element (xpath: `//a[@data-path='analytics-reporting']`) → Advanced Analytics (none transition)
+  - Element (xpath: `//a[@data-path='team-management']`) → Team Governance (none transition)
+  - Element (xpath: `//a[@data-path='settings']`) → Platform Configuration (none transition)
+- Campaign Studio:
+  - Element (xpath: `//button[contains(text(), 'Next Module')]`) → Executive Dashboard (push transition)
+- Platform Configuration:
+  - Element (xpath: `//a[@data-path='team-management']`) → Team Governance (none transition)
+- Executive Dashboard:
+  - Element (xpath: `//button[contains(text(), 'Accelerate')]`) → MLR Regulatory Hub (push transition)
+  - Element (xpath: `//button[contains(text(), 'Review Analysis')]`) → Advanced Analytics (push transition)
+
+Make sure the screen are connected as defined in the navigation flow.

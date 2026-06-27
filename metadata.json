@@ -1,0 +1,6 @@
+{
+  "name": "Pharma Marketing Suite",
+  "description": "A comprehensive suite of tools for pharmaceutical marketing, including campaign management, audience intelligence, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
